@@ -28,37 +28,23 @@ app.use(helmet({
 
 app.use(compression())
 
-// ============================================
-// CORS - Multiple Origins Support
-// Supports both localhost and deployed frontend
-// ============================================
+// CORS - Allow Netlify frontend
 const allowedOrigins = [
   'http://localhost:3000',
-  'http://localhost:5173',  // Vite default port
-  'http://localhost:8888',  // Netlify dev
+  'http://localhost:8888',
   process.env.CLIENT_URL,
 ].filter(Boolean)
 
-// Also add any additional deployed URLs from env
-if (process.env.CLIENT_URL_PRODUCTION) {
-  allowedOrigins.push(process.env.CLIENT_URL_PRODUCTION)
-}
-
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
+    // Allow requests with no origin (like mobile apps, curl, server-to-server)
     if (!origin) return callback(null, true)
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true)
-    } else {
-      console.log('CORS blocked origin:', origin)
-      callback(null, true) // Allow all for now, restrict in production if needed
+    if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      return callback(null, true)
     }
+    callback(new Error('Not allowed by CORS'))
   },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  credentials: true
 }))
 
 app.use(morgan('dev'))
@@ -79,7 +65,86 @@ app.use('/api/admin/login', authLimiter)
 // Static files for uploads
 app.use('/uploads', express.static('uploads'))
 
-// Routes
+// ============================================
+// DATABASE CONNECTION - SERVERLESS SAFE
+// ============================================
+
+let cachedDb = null
+let isConnecting = false
+
+async function connectDB() {
+  // Return cached connection if available
+  if (cachedDb && mongoose.connection.readyState === 1) {
+    return cachedDb
+  }
+
+  // Prevent multiple simultaneous connection attempts
+  if (isConnecting) {
+    // Wait for existing connection attempt to finish
+    let attempts = 0
+    while (isConnecting && attempts < 50) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+      attempts++
+    }
+    if (cachedDb && mongoose.connection.readyState === 1) {
+      return cachedDb
+    }
+  }
+
+  const MONGODB_URI = process.env.MONGODB_URI
+
+  if (!MONGODB_URI) {
+    throw new Error('MONGODB_URI is not defined in environment variables')
+  }
+
+  try {
+    isConnecting = true
+    console.log('Connecting to MongoDB Atlas...')
+
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    })
+
+    cachedDb = mongoose.connection
+    isConnecting = false
+    console.log('MongoDB connected successfully')
+    return cachedDb
+  } catch (error) {
+    isConnecting = false
+    console.error('MongoDB connection error:', error.message)
+    throw error
+  }
+}
+
+// ============================================
+// DB CONNECTION MIDDLEWARE - Runs BEFORE routes
+// ============================================
+// This ensures DB is connected before any route handler executes
+
+app.use(async (req, res, next) => {
+  try {
+    await connectDB()
+    next()
+  } catch (error) {
+    console.error('Database middleware error:', error.message)
+    res.status(503).json({
+      message: 'Database connection failed: ' + error.message,
+      dbState: mongoose.connection.readyState,
+      dbStates: {
+        0: 'disconnected',
+        1: 'connected',
+        2: 'connecting',
+        3: 'disconnecting'
+      }
+    })
+  }
+})
+
+// ============================================
+// ROUTES
+// ============================================
+
 app.use('/api/admin', require('./routes/adminRoutes'))
 app.use('/api/categories', require('./routes/categoryRoutes'))
 app.use('/api/questions', require('./routes/questionRoutes'))
@@ -87,32 +152,30 @@ app.use('/api/results', require('./routes/resultRoutes'))
 app.use('/api/stats', require('./routes/statsRoutes'))
 app.use('/api/quiz', require('./routes/quizRoutes'))
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    dbConnected: mongoose.connection.readyState === 1
-  })
-})
-
-// Debug
-app.get('/api/debug', async (req, res) => {
-  res.json({
-    envVars: {
-      hasMongoURI: !!process.env.MONGODB_URI,
-      hasJWT: !!process.env.JWT_SECRET,
-      nodeEnv: process.env.NODE_ENV,
-      mongoURILength: process.env.MONGODB_URI?.length || 0
-    },
-    dbState: mongoose.connection.readyState,
-    dbStates: ['disconnected', 'connected', 'connecting', 'disconnecting']
-  })
+// Health check - also tests DB connection
+app.get('/api/health', async (req, res) => {
+  try {
+    await connectDB()
+    res.json({
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      dbConnected: mongoose.connection.readyState === 1,
+      dbState: mongoose.connection.readyState,
+      dbStateName: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState] || 'unknown'
+    })
+  } catch (error) {
+    res.status(503).json({
+      status: 'ERROR',
+      message: error.message,
+      dbConnected: false,
+      dbState: mongoose.connection.readyState
+    })
+  }
 })
 
 // Error handling
 app.use((err, req, res, next) => {
-  console.error(err.stack)
+  console.error('Error:', err.stack)
   res.status(err.status || 500).json({
     message: err.message || 'Internal Server Error',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
@@ -124,55 +187,20 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' })
 })
 
-// Database connection with caching for serverless
-let cachedDb = null
+// ============================================
+// LOCAL DEVELOPMENT ONLY
+// ============================================
 
-async function connectDB() {
-  if (cachedDb && mongoose.connection.readyState === 1) {
-    return cachedDb
-  }
-
-  const MONGODB_URI = process.env.MONGODB_URI
-
-  if (!MONGODB_URI) {
-    throw new Error('MONGODB_URI is not defined in environment variables')
-  }
-
-  try {
-    await mongoose.connect(MONGODB_URI)
-    cachedDb = mongoose.connection
-    console.log('Connected to MongoDB Atlas')
-    return cachedDb
-  } catch (error) {
-    console.error('MongoDB connection error:', error.message)
-    throw error
-  }
-}
-
-// Connect DB middleware for serverless
-app.use(async (req, res, next) => {
-  try {
-    await connectDB()
-    next()
-  } catch (error) {
-    res.status(500).json({ message: 'Database connection failed: ' + error.message })
-  }
-})
-
-// For local development only
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 5000
   connectDB().then(() => {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`)
       console.log(`Health check: http://localhost:${PORT}/api/health`)
-      console.log(`Allowed CORS origins:`, allowedOrigins)
     })
   }).catch(err => {
     console.error('Failed to start server:', err.message)
   })
 }
-
-
 
 module.exports = app
