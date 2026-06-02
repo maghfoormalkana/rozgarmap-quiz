@@ -159,4 +159,17 @@ if (process.env.NODE_ENV !== 'production') {
   })
 }
 
+app.get('/api/debug', async (req, res) => {
+  res.json({
+    envVars: {
+      hasMongoURI: !!process.env.MONGODB_URI,
+      hasJWT: !!process.env.JWT_SECRET,
+      nodeEnv: process.env.NODE_ENV,
+      mongoURILength: process.env.MONGODB_URI?.length || 0
+    },
+    dbState: mongoose.connection.readyState,
+    dbStates: ['disconnected', 'connected', 'connecting', 'disconnecting']
+  })
+})
+
 module.exports = app
