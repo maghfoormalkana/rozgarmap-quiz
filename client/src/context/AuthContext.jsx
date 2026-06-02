@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import axios from 'axios'
+import { loginAdmin, verifyAdmin } from '../services/api'
 
 const AuthContext = createContext()
 
@@ -15,9 +15,8 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const token = localStorage.getItem('token')
+
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      // Verify token on mount
       verifyToken()
     } else {
       setLoading(false)
@@ -26,34 +25,44 @@ export const AuthProvider = ({ children }) => {
 
   const verifyToken = async () => {
     try {
-      const res = await axios.get('/api/admin/verify')
+      const res = await verifyAdmin()
       setAdmin(res.data.admin)
-    } catch {
+    } catch (error) {
       localStorage.removeItem('token')
-      delete axios.defaults.headers.common['Authorization']
+      setAdmin(null)
     } finally {
       setLoading(false)
     }
   }
 
   const login = async (credentials) => {
-    const res = await axios.post('/api/admin/login', credentials)
+    const res = await loginAdmin(credentials)
+
     const { token, admin } = res.data
+
     localStorage.setItem('token', token)
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
     setAdmin(admin)
+
     return admin
   }
 
   const logout = () => {
     localStorage.removeItem('token')
-    delete axios.defaults.headers.common['Authorization']
     setAdmin(null)
   }
 
   return (
-    <AuthContext.Provider value={{ admin, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{
+        admin,
+        login,
+        logout,
+        loading
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )
 }
+
+export default AuthContext
