@@ -96,6 +96,20 @@ app.get('/api/health', (req, res) => {
   })
 })
 
+// Debug
+app.get('/api/debug', async (req, res) => {
+  res.json({
+    envVars: {
+      hasMongoURI: !!process.env.MONGODB_URI,
+      hasJWT: !!process.env.JWT_SECRET,
+      nodeEnv: process.env.NODE_ENV,
+      mongoURILength: process.env.MONGODB_URI?.length || 0
+    },
+    dbState: mongoose.connection.readyState,
+    dbStates: ['disconnected', 'connected', 'connecting', 'disconnecting']
+  })
+})
+
 // Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack)
@@ -159,17 +173,6 @@ if (process.env.NODE_ENV !== 'production') {
   })
 }
 
-app.get('/api/debug', async (req, res) => {
-  res.json({
-    envVars: {
-      hasMongoURI: !!process.env.MONGODB_URI,
-      hasJWT: !!process.env.JWT_SECRET,
-      nodeEnv: process.env.NODE_ENV,
-      mongoURILength: process.env.MONGODB_URI?.length || 0
-    },
-    dbState: mongoose.connection.readyState,
-    dbStates: ['disconnected', 'connected', 'connecting', 'disconnecting']
-  })
-})
+
 
 module.exports = app
