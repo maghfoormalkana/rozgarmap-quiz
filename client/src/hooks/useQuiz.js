@@ -12,11 +12,9 @@ export const useQuiz = (questions, timeLimit) => {
   const answeredCount = Object.keys(answers).length
 
   const selectAnswer = useCallback((questionId, option) => {
-    console.log('Selected Answer:', questionId, option)
-
     setAnswers(prev => ({
       ...prev,
-      [String(questionId)]: option
+      [String(questionId)]: String(option).trim()
     }))
   }, [])
 
@@ -39,24 +37,19 @@ export const useQuiz = (questions, timeLimit) => {
     let wrong = 0
     let unanswered = 0
 
-    console.log('========================')
-    console.log('ALL ANSWERS:', answers)
-    console.log('ALL QUESTIONS:', questions)
-    console.log('========================')
-
-    questions.forEach((q, index) => {
+    questions.forEach(q => {
       const questionId = String(q._id)
-      const userAnswer = answers[questionId]
 
-      console.log(`Question ${index + 1}`)
-      console.log('ID:', questionId)
-      console.log('User Answer:', userAnswer)
-      console.log('Correct Answer:', q.correctAnswer)
+      const userAnswer = answers[questionId]
+      const correctAnswer = q.correctAnswer
+        ? String(q.correctAnswer).trim()
+        : ''
 
       if (!userAnswer) {
         unanswered++
       } else if (
-        String(userAnswer).trim() === String(q.correctAnswer).trim()
+        String(userAnswer).trim().toLowerCase() ===
+        correctAnswer.toLowerCase()
       ) {
         correct++
       } else {
@@ -68,13 +61,6 @@ export const useQuiz = (questions, timeLimit) => {
       totalQuestions > 0
         ? Math.round((correct / totalQuestions) * 100)
         : 0
-
-    console.log('RESULT:', {
-      correct,
-      wrong,
-      unanswered,
-      percentage
-    })
 
     return {
       total: totalQuestions,
