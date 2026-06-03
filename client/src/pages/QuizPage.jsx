@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Clock, ChevronLeft, ChevronRight, Flag, Send, AlertTriangle } from 'lucide-react'
 import { getQuizQuestions } from '../services/api'
@@ -15,98 +15,53 @@ const QuizPage = () => {
   const [showTimeUpModal, setShowTimeUpModal] = useState(false)
   const quizSetup = JSON.parse(sessionStorage.getItem('quizSetup') || '{}')
 
-  const { 
-    currentIndex, 
-    currentQuestion, 
-    answers, 
-    timeLeft, 
-    setTimeLeft, 
-    isSubmitted, 
-    progress, 
-    answeredCount, 
-    totalQuestions, 
-    selectAnswer, 
-    goToQuestion, 
-    nextQuestion, 
-    prevQuestion, 
-    calculateScore, 
-    submitQuiz 
-  } = useQuiz(questions, quizSetup.quizTime || 30)
+  const { currentIndex, currentQuestion, answers, timeLeft, setTimeLeft, isSubmitted, progress, answeredCount, totalQuestions, selectAnswer, goToQuestion, nextQuestion, prevQuestion, calculateScore, submitQuiz } = useQuiz(questions, quizSetup.quizTime || 30)
 
-  useEffect(() => { 
-    if (!quizSetup.studentName) { 
-      navigate('/quiz-setup'); 
-      return 
-    } 
-    fetchQuestions() 
-  }, [categoryId])
+  useEffect(() => { if (!quizSetup.studentName) { navigate('/quiz-setup'); return } fetchQuestions() }, [categoryId])
 
   useEffect(() => {
     if (loading || isSubmitted || questions.length === 0) return
     const timer = setInterval(() => {
       setTimeLeft(prev => {
-        if (prev <= 1) { 
-          clearInterval(timer); 
-          setShowTimeUpModal(true); 
-          return 0 
-        }
+        if (prev <= 1) { clearInterval(timer); setShowTimeUpModal(true); return 0 }
         return prev - 1
       })
     }, 1000)
     return () => clearInterval(timer)
-  }, [loading, isSubmitted, questions.length, setTimeLeft])
+  }, [loading, isSubmitted, questions.length])
 
   const fetchQuestions = async () => {
     try {
       const res = await getQuizQuestions(categoryId)
-      // Normalize questions to ensure correctAnswer field exists
+      // Store correct answers separately for score calculation
       const questionsWithAnswers = res.data.map(q => ({
         ...q,
-        // Normalize correctAnswer field - handle all possible backend field names
-        correctAnswer: q.correctAnswer || q._correctAnswer || q.answer || q.correct_option || ''
+        correctAnswer: q.correctAnswer || q._correctAnswer
       }))
       setQuestions(questionsWithAnswers)
       setTimeLeft((quizSetup.quizTime || 30) * 60)
-    } catch (err) { 
-      console.error('Failed to fetch questions:', err)
-      navigate('/quiz-setup') 
-    } finally { 
-      setLoading(false) 
-    }
+    } catch (err) { navigate('/quiz-setup') }
+    finally { setLoading(false) }
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     const score = submitQuiz()
-    console.log('Final Score:', score)
-
     const resultData = {
-      studentName: quizSetup.studentName,
-      batchName: quizSetup.batchName,
+      ...quizSetup,
       category: quizSetup.categoryName,
       totalQuestions: score.total,
       correctAnswers: score.correct,
       wrongAnswers: score.wrong,
       unanswered: score.unanswered,
-      score: score.percentage
+      score: score.percentage,
+      answers: answers
     }
-
     sessionStorage.setItem('quizResult', JSON.stringify(resultData))
     navigate('/result')
-  }
+  }, [submitQuiz, quizSetup, answers, navigate])
 
-  const formatTime = (seconds) => { 
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}` 
-  }
-
-  const getTimerColor = () => { 
-    const total = (quizSetup.quizTime || 30) * 60
-    const percentage = (timeLeft / total) * 100
-    if (percentage <= 10) return 'text-red-500 animate-pulse'
-    if (percentage <= 25) return 'text-orange-500'
-    return 'text-rozgar-blue' 
-  }
+  const formatTime = (seconds) => { const mins = Math.floor(seconds / 60); const secs = seconds % 60; return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}` }
+  const getTimerColor = () => { const total = (quizSetup.quizTime || 30) * 60; const percentage = (timeLeft / total) * 100; if (percentage <= 10) return 'text-red-500 animate-pulse'; if (percentage <= 25) return 'text-orange-500'; return 'text-rozgar-blue' }
 
   if (loading) return <LoadingSpinner fullScreen text="Loading quiz..." />
 
@@ -155,7 +110,7 @@ const QuizPage = () => {
             </div>
             <div className="space-y-3">
               {currentQuestion?.options?.map((option, idx) => {
-                const isSelected = answers[String(currentQuestion._id)] === option
+                const isSelected = answers[currentQuestion._id] === option
                 return (
                   <button key={idx} onClick={() => selectAnswer(currentQuestion._id, option)} className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 flex items-center gap-3 ${isSelected ? 'border-rozgar-blue bg-rozgar-blue/5 dark:bg-rozgar-blue/10 shadow-md' : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}>
                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-rozgar-blue bg-rozgar-blue' : 'border-gray-300 dark:border-gray-500'}`}>
@@ -182,10 +137,10 @@ const QuizPage = () => {
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Question Navigator</h3>
             <div className="grid grid-cols-5 gap-2">
               {questions.map((q, idx) => {
-                const isAnswered = !!answers[String(q._id)]
+                const isAnswered = !!answers[q._id]
                 const isCurrent = idx === currentIndex
                 return (
-                  <button key={String(q._id)} onClick={() => goToQuestion(idx)} className={`w-10 h-10 rounded-lg text-sm font-medium transition-all ${isCurrent ? 'bg-rozgar-blue text-white shadow-md scale-110' : isAnswered ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
+                  <button key={q._id} onClick={() => goToQuestion(idx)} className={`w-10 h-10 rounded-lg text-sm font-medium transition-all ${isCurrent ? 'bg-rozgar-blue text-white shadow-md scale-110' : isAnswered ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
                     {idx + 1}
                   </button>
                 )
@@ -206,10 +161,10 @@ const QuizPage = () => {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 z-20">
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
           {questions.map((q, idx) => {
-            const isAnswered = !!answers[String(q._id)]
+            const isAnswered = !!answers[q._id]
             const isCurrent = idx === currentIndex
             return (
-              <button key={String(q._id)} onClick={() => goToQuestion(idx)} className={`w-9 h-9 rounded-lg text-sm font-medium shrink-0 transition-all ${isCurrent ? 'bg-rozgar-blue text-white' : isAnswered ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
+              <button key={q._id} onClick={() => goToQuestion(idx)} className={`w-9 h-9 rounded-lg text-sm font-medium shrink-0 transition-all ${isCurrent ? 'bg-rozgar-blue text-white' : isAnswered ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
                 {idx + 1}
               </button>
             )
