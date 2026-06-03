@@ -30,23 +30,28 @@ export const useQuiz = (questions, timeLimit) => {
   }, [currentIndex, goToQuestion])
 
   const calculateScore = useCallback(() => {
-    let correct = 0
-    let wrong = 0
-    questions.forEach(q => {
-      if (answers[q._id] === q.correctAnswer) {
-        correct++
-      } else if (answers[q._id]) {
-        wrong++
-      }
-    })
-    return {
-      total: totalQuestions,
-      correct,
-      wrong,
-      unanswered: totalQuestions - correct - wrong,
-      percentage: Math.round((correct / totalQuestions) * 100)
+  let correct = 0
+  let wrong = 0
+  questions.forEach((q, idx) => {
+    const selected = answers[q._id]
+    const correctAns = q.correctAnswer
+    
+    console.log(`Q${idx+1}: selected="${selected}" | correct="${correctAns}" | match=${selected === correctAns}`)
+    
+    if (selected === correctAns) {
+      correct++
+    } else if (selected) {
+      wrong++
     }
-  }, [questions, answers, totalQuestions])
+  })
+  return {
+    total: totalQuestions,
+    correct,
+    wrong,
+    unanswered: totalQuestions - correct - wrong,
+    percentage: Math.round((correct / totalQuestions) * 100)
+  }
+}, [questions, answers, totalQuestions])
 
   const submitQuiz = useCallback(() => {
     setIsSubmitted(true)

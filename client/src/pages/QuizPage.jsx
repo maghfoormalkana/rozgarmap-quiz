@@ -79,13 +79,21 @@ const QuizPage = () => {
     const shuffled = [...res.data].sort(() => Math.random() - 0.5)
     
     // Only fix options and correctAnswer field name - DON'T touch _id
-    const fixed = shuffled.map(q => ({
-      ...q,
-      options: Array.isArray(q.options) 
-        ? q.options.map(opt => typeof opt === 'object' ? opt.text || opt.option || String(opt) : String(opt))
-        : [],
-      correctAnswer: q.correctAnswr || q.correctAnswer || q.answer || null
-    }))
+    const fixed = shuffled.map(q => {
+  const mapped = {
+    ...q,
+    options: Array.isArray(q.options) 
+      ? q.options.map(opt => typeof opt === 'object' ? opt.text || opt.option || String(opt) : String(opt))
+      : [],
+    correctAnswer: q.correctAnswer || q.correctAnswr || q.answer || null
+  }
+  console.log('Mapping:', { 
+    original: q.correctAnswr, 
+    mapped: mapped.correctAnswer,
+    options: mapped.options
+  })
+  return mapped
+})
     
     setQuestions(fixed)
     setTimeLeft((quizSetup.quizTime || 30) * 60)
