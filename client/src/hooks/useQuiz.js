@@ -1,5 +1,23 @@
 import { useState, useCallback } from 'react'
 
+// Normalize any ID format to a consistent string
+const normalizeId = (id) => {
+  if (!id) return ''
+  if (typeof id === 'string') return id.trim()
+  if (typeof id === 'object') {
+    // Handle MongoDB ObjectId, { $oid: "..." }, or { _id: "..." }
+    if (id.$oid) return String(id.$oid).trim()
+    if (id._id) return String(id._id).trim()
+    if (id.toString && typeof id.toString === 'function') {
+      const str = id.toString()
+      // MongoDB ObjectId.toString() returns 24-char hex string
+      if (/^[0-9a-fA-F]{24}$/.test(str)) return str
+    }
+    return String(id).trim()
+  }
+  return String(id).trim()
+}
+
 export const useQuiz = (questions, timeLimit) => {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState({})
@@ -8,15 +26,20 @@ export const useQuiz = (questions, timeLimit) => {
 
   const currentQuestion = questions[currentIndex]
   const totalQuestions = questions.length
+
   const progress = totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0
   const answeredCount = Object.keys(answers).length
 
-  // Store answer with guaranteed string key
+  // Store answer with normalized ID key
   const selectAnswer = useCallback((questionId, option) => {
-    const id = String(questionId).trim()
+    const id = normalizeId(questionId)
     const cleanOption = String(option).trim()
     console.log('📝 selectAnswer:', { id, cleanOption })
-    setAnswers(prev => ({ ...prev, [id]: cleanOption }))
+    setAnswers(prev => {
+      const updated = { ...prev, [id]: cleanOption }
+      console.log('📝 answers state:', updated)
+      return updated
+    })
   }, [])
 
   const goToQuestion = useCallback((index) => {
@@ -26,9 +49,7 @@ export const useQuiz = (questions, timeLimit) => {
   const nextQuestion = useCallback(() => goToQuestion(currentIndex + 1), [currentIndex, goToQuestion])
   const prevQuestion = useCallback(() => goToQuestion(currentIndex - 1), [currentIndex, goToQuestion])
 
-  // Extract correct answer from question - handles ALL backend formats
   const getCorrectAnswer = (question) => {
-    // Check all possible field names
     const possibleFields = [
       'correctAnswer',
       'correct_answer',
@@ -49,59 +70,43 @@ export const useQuiz = (questions, timeLimit) => {
       }
     }
     
-    console.log('🔍 getCorrectAnswer debug:', { 
-      questionId: String(question._id),
-      rawCorrect, 
-      options: question.options,
-      allFields: possibleFields.reduce((acc, f) => ({ ...acc, [f]: question[f] }), {})
-    })
-    
     if (rawCorrect === null || rawCorrect === undefined) return null
     
     const options = question.options || []
-    
-    // If options array is empty, return raw as string
     if (!Array.isArray(options) || options.length === 0) return String(rawCorrect).trim()
     
-    // Normalize options to strings
     const stringOptions = options.map(opt => 
       typeof opt === 'object' && opt !== null 
         ? String(opt.text || opt.option || opt.label || opt.value || JSON.stringify(opt)).trim()
         : String(opt).trim()
     )
     
-    // Case 1: rawCorrect is a number (index)
     if (typeof rawCorrect === 'number') {
       return stringOptions[rawCorrect] || null
     }
     
-    // Case 2: rawCorrect is numeric string
     if (/^\d+$/.test(String(rawCorrect))) {
       const idx = parseInt(rawCorrect, 10)
       return stringOptions[idx] || null
     }
     
-    // Case 3: rawCorrect is letter A/B/C/D
     const letterMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4 }
     const strRaw = String(rawCorrect).trim()
     if (letterMap.hasOwnProperty(strRaw) && stringOptions.length > letterMap[strRaw]) {
       return stringOptions[letterMap[strRaw]]
     }
     
-    // Case 4: rawCorrect is full text - find matching option
     const lowerRaw = strRaw.toLowerCase()
     const match = stringOptions.find(opt => opt.toLowerCase() === lowerRaw)
     if (match) return match
     
-    // Case 5: rawCorrect might be option._id
     const idMatch = options.find(opt => 
-      typeof opt === 'object' && opt !== null && String(opt._id) === strRaw
+      typeof opt === 'object' && opt !== null && normalizeId(opt._id) === normalizeId(rawCorrect)
     )
     if (idMatch) {
       return String(idMatch.text || idMatch.option || idMatch.label || idMatch.value || JSON.stringify(idMatch)).trim()
     }
     
-    // Return raw as fallback
     return strRaw
   }
 
@@ -110,29 +115,27 @@ export const useQuiz = (questions, timeLimit) => {
     let wrong = 0
     let unanswered = 0
 
-    console.log('🧮 calculateScore called with answers:', answers)
+    console.log('🧮 calculateScore called')
+    console.log('🧮 answers keys:', Object.keys(answers))
     console.log('🧮 questions count:', questions.length)
 
     questions.forEach((question, idx) => {
-      // Normalize question ID - try multiple formats
-      const qId = String(question._id)
-      const qIdStr = question._id?.toString ? question._id.toString() : String(question._id)
+      // Normalize question ID
+      const qId = normalizeId(question._id)
       
-      // Try to find answer with different key formats
-      let selectedAnswer = answers[qId] || answers[qIdStr] || null
+      // Look up answer with normalized ID
+      let selectedAnswer = answers[qId] || null
       
-      // Also try if the key was stored as the raw _id object
-      const allKeys = Object.keys(answers)
+      // Fallback: try all possible key formats
       if (!selectedAnswer) {
-        const matchingKey = allKeys.find(k => String(k) === qId || String(k) === qIdStr)
+        const allKeys = Object.keys(answers)
+        const matchingKey = allKeys.find(k => normalizeId(k) === qId)
         if (matchingKey) selectedAnswer = answers[matchingKey]
       }
-      
-      console.log(`🔎 Q${idx + 1} (id: ${qId}): selected = "${selectedAnswer}"`)
 
       const correctAnswer = getCorrectAnswer(question)
-      
-      console.log(`🔎 Q${idx + 1}: correct = "${correctAnswer}"`)
+
+      console.log(`🔎 Q${idx + 1} (id: ${qId}): selected="${selectedAnswer}", correct="${correctAnswer}"`)
 
       // Count unanswered
       if (!selectedAnswer || selectedAnswer.trim() === '') {
@@ -143,8 +146,8 @@ export const useQuiz = (questions, timeLimit) => {
       
       // Guard against missing correct answer
       if (!correctAnswer) {
-        console.error(`   → ERROR: No correct answer found for question ${qId}!`)
-        unanswered++ // Don't count as wrong if we can't verify
+        console.error(`   → ERROR: No correct answer found!`)
+        unanswered++
         return
       }
 
@@ -156,7 +159,7 @@ export const useQuiz = (questions, timeLimit) => {
         console.log(`   → ✅ CORRECT`)
       } else {
         wrong++
-        console.log(`   → ❌ WRONG ("${selectedAnswer}" !== "${correctAnswer}")`)
+        console.log(`   → ❌ WRONG`)
       }
     })
 
