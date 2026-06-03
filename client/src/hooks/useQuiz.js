@@ -8,18 +8,32 @@ export const useQuiz = (questions, timeLimit) => {
 
   const currentQuestion = questions[currentIndex]
   const totalQuestions = questions.length
-  const progress = ((currentIndex + 1) / totalQuestions) * 100
+
+  const progress =
+    totalQuestions > 0
+      ? ((currentIndex + 1) / totalQuestions) * 100
+      : 0
+
   const answeredCount = Object.keys(answers).length
 
   const selectAnswer = useCallback((questionId, option) => {
-    setAnswers(prev => ({ ...prev, [questionId]: option }))
+    // Normalize questionId to string for consistent key storage
+    const id = String(questionId)
+
+    setAnswers(prev => ({
+      ...prev,
+      [id]: option
+    }))
   }, [])
 
-  const goToQuestion = useCallback((index) => {
-    if (index >= 0 && index < totalQuestions) {
-      setCurrentIndex(index)
-    }
-  }, [totalQuestions])
+  const goToQuestion = useCallback(
+    (index) => {
+      if (index >= 0 && index < totalQuestions) {
+        setCurrentIndex(index)
+      }
+    },
+    [totalQuestions]
+  )
 
   const nextQuestion = useCallback(() => {
     goToQuestion(currentIndex + 1)
@@ -32,25 +46,46 @@ export const useQuiz = (questions, timeLimit) => {
   const calculateScore = useCallback(() => {
     let correct = 0
     let wrong = 0
-    questions.forEach(q => {
-      if (answers[q._id] === q.correctAnswer) {
+
+    questions.forEach(question => {
+      // Normalize question._id to string to match answers keys
+      const questionId = String(question._id)
+      const selectedAnswer = answers[questionId]
+
+      // Skip unanswered questions
+      if (!selectedAnswer || selectedAnswer.trim() === '') return
+
+      // Get correct answer with fallback for different field names
+      const correctAnswer = question.correctAnswer || question._correctAnswer || question.answer || ''
+
+      if (
+        selectedAnswer.trim().toLowerCase() ===
+        correctAnswer.trim().toLowerCase()
+      ) {
         correct++
-      } else if (answers[q._id]) {
+      } else {
         wrong++
       }
     })
+
+    const unanswered = totalQuestions - correct - wrong
+
     return {
       total: totalQuestions,
       correct,
       wrong,
-      unanswered: totalQuestions - correct - wrong,
-      percentage: Math.round((correct / totalQuestions) * 100)
+      unanswered,
+      percentage:
+        totalQuestions > 0
+          ? Math.round((correct / totalQuestions) * 100)
+          : 0
     }
   }, [questions, answers, totalQuestions])
 
   const submitQuiz = useCallback(() => {
     setIsSubmitted(true)
-    return calculateScore()
+    const result = calculateScore()
+    return result
   }, [calculateScore])
 
   return {
