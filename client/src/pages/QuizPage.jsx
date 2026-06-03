@@ -44,39 +44,29 @@ const QuizPage = () => {
       console.log('📦 Raw questions:', res.data)
       if (res.data?.[0]) {
         console.log('📦 First question _id:', res.data[0]._id)
-        console.log('📦 First question _id type:', typeof res.data[0]._id)
+        console.log('📦 First question correctAnswr:', res.data[0].correctAnswr)
         console.log('📦 First question fields:', Object.keys(res.data[0]))
-        console.log('📦 First question correctAnswer:', res.data[0].correctAnswer)
-        console.log('📦 First question answer:', res.data[0].answer)
       }
 
-      // 🔥 CRITICAL FIX: Shuffle first, then normalize
-      // But keep the original _id intact - don't change it!
+      // 🔥 CRITICAL FIX: Shuffle first, then normalize - but preserve original _id
       const shuffled = [...res.data].sort(() => Math.random() - 0.5)
       
-      // Normalize: convert options to strings, but PRESERVE original _id
-      const normalized = shuffled.map(q => {
-        // Convert options to plain strings
-        const stringOptions = Array.isArray(q.options) 
-          ? q.options.map(opt => {
-              if (typeof opt === 'object' && opt !== null) {
-                return String(opt.text || opt.option || opt.label || opt.value || JSON.stringify(opt)).trim()
-              }
-              return String(opt).trim()
-            })
-          : []
-        
-        // 🔥 CRITICAL: Create a clean question object with the SAME _id
-        return {
-          _id: q._id,  // Keep original _id exactly as-is
-          question: q.question,
-          options: stringOptions,
-          // Check all possible correct answer field names
-          correctAnswer: q.correctAnswer || q.correct_answer || q._correctAnswer || q.answer || q.correct || q.correct_option || q.rightAnswer || q.right_answer || q.solution || null,
-          // Keep any other fields
-          ...q
-        }
-      })
+      // Normalize options to strings, keep _id and correctAnswr intact
+      const normalized = shuffled.map(q => ({
+        _id: q._id,
+        question: q.question,
+        options: Array.isArray(q.options) 
+          ? q.options.map(opt => 
+              typeof opt === 'object' && opt !== null 
+                ? String(opt.text || opt.option || opt.label || opt.value || JSON.stringify(opt)).trim()
+                : String(opt).trim()
+            )
+          : [],
+        correctAnswr: q.correctAnswr,  // ← Preserve your backend field name
+        categoryId: q.categoryId,
+        createdAt: q.createdAt,
+        updatedAt: q.updatedAt
+      }))
       
       console.log('📦 Normalized first question:', normalized[0])
       setQuestions(normalized)

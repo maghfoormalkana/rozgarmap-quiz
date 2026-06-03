@@ -31,8 +31,9 @@ export const useQuiz = (questions, timeLimit) => {
   const prevQuestion = useCallback(() => goToQuestion(currentIndex - 1), [currentIndex, goToQuestion])
 
   const getCorrectAnswer = (question) => {
-    // Check all possible field names for correct answer
+    // 🔥 FIXED: Backend uses 'correctAnswr' (typo in your schema!)
     const possibleFields = [
+      'correctAnswr',      // ← Your actual backend field name
       'correctAnswer',
       'correct_answer',
       '_correctAnswer',
@@ -99,19 +100,12 @@ export const useQuiz = (questions, timeLimit) => {
     questions.forEach((question, idx) => {
       const qId = String(question._id)
       
-      // Look up answer
+      // Look up answer using the question's own _id
       let selectedAnswer = answers[qId] || null
       
-      // Fallback: try all keys
-      if (!selectedAnswer) {
-        const allKeys = Object.keys(answers)
-        const matchingKey = allKeys.find(k => String(k) === qId)
-        if (matchingKey) selectedAnswer = answers[matchingKey]
-      }
+      console.log(`🔎 Q${idx + 1} (id: ${qId}): selected="${selectedAnswer}"`)
 
       const correctAnswer = getCorrectAnswer(question)
-
-      console.log(`🔎 Q${idx + 1} (id: ${qId}): selected="${selectedAnswer}", correct="${correctAnswer}"`)
 
       if (!selectedAnswer || selectedAnswer.trim() === '') {
         unanswered++
