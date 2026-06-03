@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { 
+import {
   Clock, ChevronLeft, ChevronRight, Flag, Send, AlertTriangle,
   CheckCircle2, Circle, Timer, BookOpen, BarChart3
 } from 'lucide-react'
@@ -71,37 +71,41 @@ const QuizPage = () => {
     return () => clearInterval(timer)
   }, [loading, isSubmitted, questions.length])
 
-  const fetchQuestions = async () => {
+  const [correctAnswers, setCorrectAnswers] = useState({})
+
+const fetchQuestions = async () => {
   try {
     const res = await getQuizQuestions(categoryId)
     
-    // Shuffle questions
+    // 🔥 EXTRACT correct answers before shuffling (backend doesn't send them in response)
+    // We need to get them from a separate endpoint or include them in the API
+    // For now, we'll fetch questions WITH correct answers from a modified endpoint
+    
+    // Option 1: If your API has a parameter to include correct answers
+    // const res = await getQuizQuestions(categoryId, { includeAnswers: true })
+    
+    // Option 2: Store correct answers separately
+    const answersMap = {}
+    res.data.forEach(q => {
+      // Try to find correct answer from any field
+      const correct = q.correctAnswer || q.correctAnswr || q.correct || q.answer || null
+      if (correct) {
+        answersMap[q._id] = correct
+      }
+    })
+    setCorrectAnswers(answersMap)
+    
+    // Shuffle
     const shuffled = [...res.data].sort(() => Math.random() - 0.5)
     
-    // Only fix options and correctAnswer field name - DON'T touch _id
-  const fixed = shuffled.map(q => {
-  // Log ALL fields to find the correct answer field
-  console.log('Question fields:', Object.keys(q))
-  console.log('All values:', {
-    correctAnswer: q.correctAnswer,
-    correctAnswr: q.correctAnswr, 
-    correct: q.correct,
-    answer: q.answer,
-    ans: q.ans,
-    rightAnswer: q.rightAnswer,
-    solution: q.solution,
-    _correctAnswer: q._correctAnswer
-  })
-  
-  return {
-    ...q,
-    options: Array.isArray(q.options) 
-      ? q.options.map(opt => typeof opt === 'object' ? opt.text || opt.option || String(opt) : String(opt))
-      : [],
-    // Try every possible field name
-    correctAnswer: q.correctAnswer || q.correctAnswr || q.correct || q.answer || q.ans || q.rightAnswer || q.solution || q._correctAnswer || null
-  }
-})
+    const fixed = shuffled.map(q => ({
+      ...q,
+      options: Array.isArray(q.options) 
+        ? q.options.map(opt => typeof opt === 'object' ? opt.text || opt.option || String(opt) : String(opt))
+        : [],
+      // Use stored correct answer if available
+      correctAnswer: answersMap[q._id] || q.correctAnswer || q.correctAnswr || q.correct || q.answer || null
+    }))
     
     setQuestions(fixed)
     setTimeLeft((quizSetup.quizTime || 30) * 60)
@@ -236,17 +240,15 @@ const QuizPage = () => {
                   <button
                     key={idx}
                     onClick={() => selectAnswer(currentQuestion._id, option)}
-                    className={`w-full text-left p-5 rounded-xl border-2 transition-all duration-300 flex items-center gap-4 group ${
-                      isSelected
+                    className={`w-full text-left p-5 rounded-xl border-2 transition-all duration-300 flex items-center gap-4 group ${isSelected
                         ? 'border-rozgar-blue bg-gradient-to-r from-rozgar-blue/5 to-rozgar-blue/10 dark:from-rozgar-blue/10 dark:to-rozgar-blue/20 shadow-glow'
                         : 'border-gray-200 dark:border-slate-600 hover:border-rozgar-blue/30 dark:hover:border-rozgar-blue/30 hover:bg-gray-50 dark:hover:bg-slate-700/50'
-                    }`}
+                      }`}
                   >
-                    <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center shrink-0 font-bold text-sm transition-all ${
-                      isSelected
+                    <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center shrink-0 font-bold text-sm transition-all ${isSelected
                         ? 'border-rozgar-blue bg-rozgar-blue text-white shadow-lg'
                         : 'border-gray-300 dark:border-slate-500 text-gray-500 dark:text-gray-400 group-hover:border-rozgar-blue/50'
-                    }`}>
+                      }`}>
                       {isSelected ? <CheckCircle2 className="w-5 h-5" /> : letters[idx]}
                     </div>
                     <span className={`text-base ${isSelected ? 'font-semibold text-rozgar-blue' : 'text-gray-700 dark:text-gray-300'}`}>
@@ -270,12 +272,11 @@ const QuizPage = () => {
 
               <div className="hidden sm:flex items-center gap-1">
                 {questions.map((_, idx) => (
-                  <div 
+                  <div
                     key={idx}
-                    className={`w-2 h-2 rounded-full transition-all ${
-                      idx === currentIndex ? 'w-6 bg-rozgar-blue' : 
-                      idx < currentIndex ? 'bg-rozgar-blue/40' : 'bg-gray-200 dark:bg-slate-600'
-                    }`}
+                    className={`w-2 h-2 rounded-full transition-all ${idx === currentIndex ? 'w-6 bg-rozgar-blue' :
+                        idx < currentIndex ? 'bg-rozgar-blue/40' : 'bg-gray-200 dark:bg-slate-600'
+                      }`}
                   />
                 ))}
               </div>
@@ -311,13 +312,12 @@ const QuizPage = () => {
                   <button
                     key={qId}
                     onClick={() => goToQuestion(idx)}
-                    className={`w-10 h-10 rounded-xl text-sm font-bold transition-all ${
-                      isCurrent
+                    className={`w-10 h-10 rounded-xl text-sm font-bold transition-all ${isCurrent
                         ? 'bg-gradient-to-br from-rozgar-blue to-rozgar-blue-light text-white shadow-glow scale-110'
                         : isAnswered
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-2 border-green-300 dark:border-green-700'
-                        : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-600'
-                    }`}
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-2 border-green-300 dark:border-green-700'
+                          : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-600'
+                      }`}
                   >
                     {idx + 1}
                   </button>
@@ -346,7 +346,7 @@ const QuizPage = () => {
                 <span className="text-sm font-bold text-rozgar-blue">{answeredCount}/{totalQuestions}</span>
               </div>
               <div className="mt-2 h-2 bg-gray-200 dark:bg-slate-600 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-gradient-to-r from-rozgar-blue to-rozgar-blue-light rounded-full transition-all"
                   style={{ width: `${(answeredCount / totalQuestions) * 100}%` }}
                 />
@@ -367,13 +367,12 @@ const QuizPage = () => {
               <button
                 key={qId}
                 onClick={() => goToQuestion(idx)}
-                className={`w-10 h-10 rounded-xl text-sm font-bold shrink-0 transition-all ${
-                  isCurrent
+                className={`w-10 h-10 rounded-xl text-sm font-bold shrink-0 transition-all ${isCurrent
                     ? 'bg-gradient-to-br from-rozgar-blue to-rozgar-blue-light text-white shadow-glow'
                     : isAnswered
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                    : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400'
-                }`}
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                      : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400'
+                  }`}
               >
                 {idx + 1}
               </button>
@@ -421,7 +420,7 @@ const QuizPage = () => {
       {/* Time Up Modal */}
       <Modal
         isOpen={showTimeUpModal}
-        onClose={() => {}}
+        onClose={() => { }}
         title="Time's Up! ⏰"
         size="sm"
       >
