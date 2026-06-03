@@ -72,30 +72,30 @@ const QuizPage = () => {
   }, [loading, isSubmitted, questions.length])
 
   const fetchQuestions = async () => {
-    try {
-      const res = await getQuizQuestions(categoryId)
-      
-      // 🔥 SHUFFLE questions before setting
-      const shuffled = [...res.data].sort(() => Math.random() - 0.5)
-      
-      // Normalize: ensure each question has a clean _id string and string options
-      const normalized = shuffled.map(q => ({
-        ...q,
-        _id: getId(q._id),  // Convert {$oid: "..."} to string
-        options: Array.isArray(q.options) 
-          ? q.options.map(opt => typeof opt === 'object' ? opt.text || opt.option || String(opt) : String(opt))
-          : []
-      }))
-      
-      setQuestions(normalized)
-      setTimeLeft((quizSetup.quizTime || 30) * 60)
-    } catch (err) {
-      toast.error('Failed to load questions')
-      navigate('/quiz-setup')
-    } finally {
-      setLoading(false)
-    }
+  try {
+    const res = await getQuizQuestions(categoryId)
+    
+    // Shuffle questions
+    const shuffled = [...res.data].sort(() => Math.random() - 0.5)
+    
+    // Only fix options and correctAnswer field name - DON'T touch _id
+    const fixed = shuffled.map(q => ({
+      ...q,
+      options: Array.isArray(q.options) 
+        ? q.options.map(opt => typeof opt === 'object' ? opt.text || opt.option || String(opt) : String(opt))
+        : [],
+      correctAnswer: q.correctAnswr || q.correctAnswer || q.answer || null
+    }))
+    
+    setQuestions(fixed)
+    setTimeLeft((quizSetup.quizTime || 30) * 60)
+  } catch (err) {
+    toast.error('Failed to load questions')
+    navigate('/quiz-setup')
+  } finally {
+    setLoading(false)
   }
+}
 
   const handleSubmit = useCallback(() => {
     const score = submitQuiz()
