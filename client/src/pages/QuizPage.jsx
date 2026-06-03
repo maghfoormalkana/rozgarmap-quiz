@@ -79,20 +79,28 @@ const QuizPage = () => {
     const shuffled = [...res.data].sort(() => Math.random() - 0.5)
     
     // Only fix options and correctAnswer field name - DON'T touch _id
-    const fixed = shuffled.map(q => {
-  const mapped = {
+  const fixed = shuffled.map(q => {
+  // Log ALL fields to find the correct answer field
+  console.log('Question fields:', Object.keys(q))
+  console.log('All values:', {
+    correctAnswer: q.correctAnswer,
+    correctAnswr: q.correctAnswr, 
+    correct: q.correct,
+    answer: q.answer,
+    ans: q.ans,
+    rightAnswer: q.rightAnswer,
+    solution: q.solution,
+    _correctAnswer: q._correctAnswer
+  })
+  
+  return {
     ...q,
     options: Array.isArray(q.options) 
       ? q.options.map(opt => typeof opt === 'object' ? opt.text || opt.option || String(opt) : String(opt))
       : [],
-    correctAnswer: q.correctAnswer || q.correctAnswr || q.answer || null
+    // Try every possible field name
+    correctAnswer: q.correctAnswer || q.correctAnswr || q.correct || q.answer || q.ans || q.rightAnswer || q.solution || q._correctAnswer || null
   }
-  console.log('Mapping:', { 
-    original: q.correctAnswr, 
-    mapped: mapped.correctAnswer,
-    options: mapped.options
-  })
-  return mapped
 })
     
     setQuestions(fixed)
