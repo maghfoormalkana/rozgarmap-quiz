@@ -8,14 +8,11 @@ export const useQuiz = (questions, timeLimit) => {
 
   const currentQuestion = questions[currentIndex]
   const totalQuestions = questions.length
-  const progress = totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0
+  const progress = ((currentIndex + 1) / totalQuestions) * 100
   const answeredCount = Object.keys(answers).length
 
   const selectAnswer = useCallback((questionId, option) => {
-    setAnswers(prev => ({
-      ...prev,
-      [String(questionId)]: String(option).trim()
-    }))
+    setAnswers(prev => ({ ...prev, [questionId]: option }))
   }, [])
 
   const goToQuestion = useCallback((index) => {
@@ -35,39 +32,19 @@ export const useQuiz = (questions, timeLimit) => {
   const calculateScore = useCallback(() => {
     let correct = 0
     let wrong = 0
-    let unanswered = 0
-
     questions.forEach(q => {
-      const questionId = String(q._id)
-
-      const userAnswer = answers[questionId]
-      const correctAnswer = q.correctAnswer
-        ? String(q.correctAnswer).trim()
-        : ''
-
-      if (!userAnswer) {
-        unanswered++
-      } else if (
-        String(userAnswer).trim().toLowerCase() ===
-        correctAnswer.toLowerCase()
-      ) {
+      if (answers[q._id] === q.correctAnswer) {
         correct++
-      } else {
+      } else if (answers[q._id]) {
         wrong++
       }
     })
-
-    const percentage =
-      totalQuestions > 0
-        ? Math.round((correct / totalQuestions) * 100)
-        : 0
-
     return {
       total: totalQuestions,
       correct,
       wrong,
-      unanswered,
-      percentage
+      unanswered: totalQuestions - correct - wrong,
+      percentage: Math.round((correct / totalQuestions) * 100)
     }
   }, [questions, answers, totalQuestions])
 
