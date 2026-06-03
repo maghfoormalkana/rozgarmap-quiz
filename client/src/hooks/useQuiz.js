@@ -8,43 +8,69 @@ export const useQuiz = (questions, timeLimit) => {
 
   const currentQuestion = questions[currentIndex]
   const totalQuestions = questions.length
-  const progress = ((currentIndex + 1) / totalQuestions) * 100
+
+  const progress =
+    totalQuestions > 0
+      ? ((currentIndex + 1) / totalQuestions) * 100
+      : 0
+
   const answeredCount = Object.keys(answers).length
 
   const selectAnswer = useCallback((questionId, option) => {
-    setAnswers(prev => ({ ...prev, [questionId]: option }))
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: option
+    }))
   }, [])
 
-  const goToQuestion = useCallback((index) => {
-    if (index >= 0 && index < totalQuestions) {
-      setCurrentIndex(index)
-    }
-  }, [totalQuestions])
+  const goToQuestion = useCallback(
+    (index) => {
+      if (index >= 0 && index < totalQuestions) {
+        setCurrentIndex(index)
+      }
+    },
+    [totalQuestions]
+  )
 
-  const nextQuestion = useCallback(() => {
-    goToQuestion(currentIndex + 1)
-  }, [currentIndex, goToQuestion])
+  const nextQuestion = useCallback(
+    () => goToQuestion(currentIndex + 1),
+    [currentIndex, goToQuestion]
+  )
 
-  const prevQuestion = useCallback(() => {
-    goToQuestion(currentIndex - 1)
-  }, [currentIndex, goToQuestion])
+  const prevQuestion = useCallback(
+    () => goToQuestion(currentIndex - 1),
+    [currentIndex, goToQuestion]
+  )
 
   const calculateScore = useCallback(() => {
     let correct = 0
     let wrong = 0
+    let unanswered = 0
+
     questions.forEach(q => {
-      if (answers[q._id] === q.correctAnswer) {
+      const selectedAnswer = answers[q._id]
+
+      if (!selectedAnswer) {
+        unanswered++
+      } else if (
+        selectedAnswer.trim().toLowerCase() ===
+        q.correctAnswer.trim().toLowerCase()
+      ) {
         correct++
-      } else if (answers[q._id]) {
+      } else {
         wrong++
       }
     })
+
     return {
       total: totalQuestions,
       correct,
       wrong,
-      unanswered: totalQuestions - correct - wrong,
-      percentage: Math.round((correct / totalQuestions) * 100)
+      unanswered,
+      percentage:
+        totalQuestions > 0
+          ? Math.round((correct / totalQuestions) * 100)
+          : 0
     }
   }, [questions, answers, totalQuestions])
 
