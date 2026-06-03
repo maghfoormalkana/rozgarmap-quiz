@@ -6,22 +6,6 @@ import { useQuiz } from '../hooks/useQuiz'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Modal from '../components/Modal'
 
-// Normalize ID helper (same as in useQuiz)
-const normalizeId = (id) => {
-  if (!id) return ''
-  if (typeof id === 'string') return id.trim()
-  if (typeof id === 'object') {
-    if (id.$oid) return String(id.$oid).trim()
-    if (id._id) return String(id._id).trim()
-    if (id.toString && typeof id.toString === 'function') {
-      const str = id.toString()
-      if (/^[0-9a-fA-F]{24}$/.test(str)) return str
-    }
-    return String(id).trim()
-  }
-  return String(id).trim()
-}
-
 const QuizPage = () => {
   const { categoryId } = useParams()
   const navigate = useNavigate()
@@ -57,29 +41,44 @@ const QuizPage = () => {
     try {
       const res = await getQuizQuestions(categoryId)
       
-      // Log raw data for debugging
       console.log('📦 Raw questions:', res.data)
       if (res.data?.[0]) {
         console.log('📦 First question _id:', res.data[0]._id)
         console.log('📦 First question _id type:', typeof res.data[0]._id)
+        console.log('📦 First question fields:', Object.keys(res.data[0]))
+        console.log('📦 First question correctAnswer:', res.data[0].correctAnswer)
+        console.log('📦 First question answer:', res.data[0].answer)
       }
 
-      // Shuffle questions
+      // 🔥 CRITICAL FIX: Shuffle first, then normalize
+      // But keep the original _id intact - don't change it!
       const shuffled = [...res.data].sort(() => Math.random() - 0.5)
       
-      // Normalize questions - ensure _id is preserved as-is, options become strings
-      const normalized = shuffled.map(q => ({
-        ...q,
-        options: Array.isArray(q.options) 
-          ? q.options.map(opt => 
-              typeof opt === 'object' && opt !== null 
-                ? String(opt.text || opt.option || opt.label || opt.value || opt._id || JSON.stringify(opt)).trim()
-                : String(opt).trim()
-            )
+      // Normalize: convert options to strings, but PRESERVE original _id
+      const normalized = shuffled.map(q => {
+        // Convert options to plain strings
+        const stringOptions = Array.isArray(q.options) 
+          ? q.options.map(opt => {
+              if (typeof opt === 'object' && opt !== null) {
+                return String(opt.text || opt.option || opt.label || opt.value || JSON.stringify(opt)).trim()
+              }
+              return String(opt).trim()
+            })
           : []
-      }))
+        
+        // 🔥 CRITICAL: Create a clean question object with the SAME _id
+        return {
+          _id: q._id,  // Keep original _id exactly as-is
+          question: q.question,
+          options: stringOptions,
+          // Check all possible correct answer field names
+          correctAnswer: q.correctAnswer || q.correct_answer || q._correctAnswer || q.answer || q.correct || q.correct_option || q.rightAnswer || q.right_answer || q.solution || null,
+          // Keep any other fields
+          ...q
+        }
+      })
       
-      console.log('📦 Normalized first question _id:', normalized[0]?._id)
+      console.log('📦 Normalized first question:', normalized[0])
       setQuestions(normalized)
       setTimeLeft((quizSetup.quizTime || 30) * 60)
     } catch (err) { 
@@ -174,7 +173,7 @@ const QuizPage = () => {
             </div>
             <div className="space-y-3">
               {currentQuestion?.options?.map((option, idx) => {
-                const qId = normalizeId(currentQuestion._id)
+                const qId = String(currentQuestion._id)
                 const isSelected = answers[qId] === option
                 return (
                   <button 
@@ -222,11 +221,11 @@ const QuizPage = () => {
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Question Navigator</h3>
             <div className="grid grid-cols-5 gap-2">
               {questions.map((q, idx) => {
-                const isAnswered = !!answers[normalizeId(q._id)]
+                const isAnswered = !!answers[String(q._id)]
                 const isCurrent = idx === currentIndex
                 return (
                   <button 
-                    key={normalizeId(q._id)} 
+                    key={String(q._id)} 
                     onClick={() => goToQuestion(idx)} 
                     className={`w-10 h-10 rounded-lg text-sm font-medium transition-all ${
                       isCurrent 
@@ -256,11 +255,11 @@ const QuizPage = () => {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 z-20">
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
           {questions.map((q, idx) => {
-            const isAnswered = !!answers[normalizeId(q._id)]
+            const isAnswered = !!answers[String(q._id)]
             const isCurrent = idx === currentIndex
             return (
               <button 
-                key={normalizeId(q._id)} 
+                key={String(q._id)} 
                 onClick={() => goToQuestion(idx)} 
                 className={`w-9 h-9 rounded-lg text-sm font-medium shrink-0 transition-all ${
                   isCurrent 

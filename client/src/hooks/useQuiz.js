@@ -1,23 +1,5 @@
 import { useState, useCallback } from 'react'
 
-// Normalize any ID format to a consistent string
-const normalizeId = (id) => {
-  if (!id) return ''
-  if (typeof id === 'string') return id.trim()
-  if (typeof id === 'object') {
-    // Handle MongoDB ObjectId, { $oid: "..." }, or { _id: "..." }
-    if (id.$oid) return String(id.$oid).trim()
-    if (id._id) return String(id._id).trim()
-    if (id.toString && typeof id.toString === 'function') {
-      const str = id.toString()
-      // MongoDB ObjectId.toString() returns 24-char hex string
-      if (/^[0-9a-fA-F]{24}$/.test(str)) return str
-    }
-    return String(id).trim()
-  }
-  return String(id).trim()
-}
-
 export const useQuiz = (questions, timeLimit) => {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState({})
@@ -30,9 +12,8 @@ export const useQuiz = (questions, timeLimit) => {
   const progress = totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0
   const answeredCount = Object.keys(answers).length
 
-  // Store answer with normalized ID key
   const selectAnswer = useCallback((questionId, option) => {
-    const id = normalizeId(questionId)
+    const id = String(questionId).trim()
     const cleanOption = String(option).trim()
     console.log('📝 selectAnswer:', { id, cleanOption })
     setAnswers(prev => {
@@ -50,6 +31,7 @@ export const useQuiz = (questions, timeLimit) => {
   const prevQuestion = useCallback(() => goToQuestion(currentIndex - 1), [currentIndex, goToQuestion])
 
   const getCorrectAnswer = (question) => {
+    // Check all possible field names for correct answer
     const possibleFields = [
       'correctAnswer',
       'correct_answer',
@@ -70,16 +52,18 @@ export const useQuiz = (questions, timeLimit) => {
       }
     }
     
+    console.log('🔍 getCorrectAnswer:', { 
+      questionId: String(question._id),
+      rawCorrect, 
+      options: question.options
+    })
+    
     if (rawCorrect === null || rawCorrect === undefined) return null
     
     const options = question.options || []
     if (!Array.isArray(options) || options.length === 0) return String(rawCorrect).trim()
     
-    const stringOptions = options.map(opt => 
-      typeof opt === 'object' && opt !== null 
-        ? String(opt.text || opt.option || opt.label || opt.value || JSON.stringify(opt)).trim()
-        : String(opt).trim()
-    )
+    const stringOptions = options.map(opt => String(opt).trim())
     
     if (typeof rawCorrect === 'number') {
       return stringOptions[rawCorrect] || null
@@ -100,13 +84,6 @@ export const useQuiz = (questions, timeLimit) => {
     const match = stringOptions.find(opt => opt.toLowerCase() === lowerRaw)
     if (match) return match
     
-    const idMatch = options.find(opt => 
-      typeof opt === 'object' && opt !== null && normalizeId(opt._id) === normalizeId(rawCorrect)
-    )
-    if (idMatch) {
-      return String(idMatch.text || idMatch.option || idMatch.label || idMatch.value || JSON.stringify(idMatch)).trim()
-    }
-    
     return strRaw
   }
 
@@ -120,16 +97,15 @@ export const useQuiz = (questions, timeLimit) => {
     console.log('🧮 questions count:', questions.length)
 
     questions.forEach((question, idx) => {
-      // Normalize question ID
-      const qId = normalizeId(question._id)
+      const qId = String(question._id)
       
-      // Look up answer with normalized ID
+      // Look up answer
       let selectedAnswer = answers[qId] || null
       
-      // Fallback: try all possible key formats
+      // Fallback: try all keys
       if (!selectedAnswer) {
         const allKeys = Object.keys(answers)
-        const matchingKey = allKeys.find(k => normalizeId(k) === qId)
+        const matchingKey = allKeys.find(k => String(k) === qId)
         if (matchingKey) selectedAnswer = answers[matchingKey]
       }
 
@@ -137,14 +113,12 @@ export const useQuiz = (questions, timeLimit) => {
 
       console.log(`🔎 Q${idx + 1} (id: ${qId}): selected="${selectedAnswer}", correct="${correctAnswer}"`)
 
-      // Count unanswered
       if (!selectedAnswer || selectedAnswer.trim() === '') {
         unanswered++
         console.log(`   → UNANSWERED`)
         return
       }
       
-      // Guard against missing correct answer
       if (!correctAnswer) {
         console.error(`   → ERROR: No correct answer found!`)
         unanswered++
