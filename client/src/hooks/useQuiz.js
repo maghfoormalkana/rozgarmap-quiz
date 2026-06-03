@@ -8,42 +8,73 @@ export const useQuiz = (questions, timeLimit) => {
 
   const currentQuestion = questions[currentIndex]
   const totalQuestions = questions.length
-  const progress = ((currentIndex + 1) / totalQuestions) * 100
+  const progress = totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0
   const answeredCount = Object.keys(answers).length
 
   const selectAnswer = useCallback((questionId, option) => {
-    setAnswers(prev => ({ ...prev, [questionId]: option }))
+    console.log('Selected Answer:', questionId, option)
+
+    setAnswers(prev => ({
+      ...prev,
+      [String(questionId)]: option
+    }))
   }, [])
 
   const goToQuestion = useCallback((index) => {
-    if (index >= 0 && index < totalQuestions) setCurrentIndex(index)
+    if (index >= 0 && index < totalQuestions) {
+      setCurrentIndex(index)
+    }
   }, [totalQuestions])
 
-  const nextQuestion = useCallback(() => goToQuestion(currentIndex + 1), [currentIndex, goToQuestion])
-  const prevQuestion = useCallback(() => goToQuestion(currentIndex - 1), [currentIndex, goToQuestion])
+  const nextQuestion = useCallback(() => {
+    goToQuestion(currentIndex + 1)
+  }, [currentIndex, goToQuestion])
 
-  // FIXED: Correct calculation
+  const prevQuestion = useCallback(() => {
+    goToQuestion(currentIndex - 1)
+  }, [currentIndex, goToQuestion])
+
   const calculateScore = useCallback(() => {
     let correct = 0
     let wrong = 0
     let unanswered = 0
 
-    questions.forEach(q => {
-      const userAnswer = answers[q._id]
+    console.log('========================')
+    console.log('ALL ANSWERS:', answers)
+    console.log('ALL QUESTIONS:', questions)
+    console.log('========================')
+
+    questions.forEach((q, index) => {
+      const questionId = String(q._id)
+      const userAnswer = answers[questionId]
+
+      console.log(`Question ${index + 1}`)
+      console.log('ID:', questionId)
+      console.log('User Answer:', userAnswer)
+      console.log('Correct Answer:', q.correctAnswer)
+
       if (!userAnswer) {
-        // Question was NOT answered
         unanswered++
-      } else if (userAnswer === q.correctAnswer) {
-        // Answer matches correct answer
+      } else if (
+        String(userAnswer).trim() === String(q.correctAnswer).trim()
+      ) {
         correct++
       } else {
-        // Answer given but wrong
         wrong++
       }
     })
 
-    // Score = (correct / total) * 100, rounded
-    const percentage = totalQuestions > 0 ? Math.round((correct / totalQuestions) * 100) : 0
+    const percentage =
+      totalQuestions > 0
+        ? Math.round((correct / totalQuestions) * 100)
+        : 0
+
+    console.log('RESULT:', {
+      correct,
+      wrong,
+      unanswered,
+      percentage
+    })
 
     return {
       total: totalQuestions,
@@ -60,9 +91,20 @@ export const useQuiz = (questions, timeLimit) => {
   }, [calculateScore])
 
   return {
-    currentIndex, currentQuestion, answers, timeLeft, setTimeLeft,
-    isSubmitted, progress, answeredCount, totalQuestions,
-    selectAnswer, goToQuestion, nextQuestion, prevQuestion,
-    calculateScore, submitQuiz
+    currentIndex,
+    currentQuestion,
+    answers,
+    timeLeft,
+    setTimeLeft,
+    isSubmitted,
+    progress,
+    answeredCount,
+    totalQuestions,
+    selectAnswer,
+    goToQuestion,
+    nextQuestion,
+    prevQuestion,
+    calculateScore,
+    submitQuiz
   }
 }
