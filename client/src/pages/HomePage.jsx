@@ -6,6 +6,8 @@ import {
   ChevronRight, Play, Shield, BarChart3
 } from 'lucide-react'
 
+import ExamPopup from '../components/ExamPopup';
+
 const HomePage = () => {
   const heroRef = useRef(null)
 
@@ -75,6 +77,8 @@ const HomePage = () => {
 
   return (
     <div className="animate-fade-in overflow-hidden">
+      {/* EXAM POPUP MODULE */}
+      <ExamPopup />
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
         {/* Background Image */}

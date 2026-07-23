@@ -152,6 +152,10 @@ app.use('/api/results', require('./routes/resultRoutes'))
 app.use('/api/stats', require('./routes/statsRoutes'))
 app.use('/api/quiz', require('./routes/quizRoutes'))
 
+// ADD THESE TWO LINES FOR THE EXAM MODULE
+app.use('/api/popup', require('./routes/popupRoutes'))
+app.use('/api/exam', require('./routes/examRoutes'))
+
 // Health check - also tests DB connection
 app.get('/api/health', async (req, res) => {
   try {

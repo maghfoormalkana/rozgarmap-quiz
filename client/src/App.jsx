@@ -13,6 +13,11 @@ import QuestionsPage from './pages/QuestionsPage'
 import ResultsManagement from './pages/ResultsManagement'
 import LoadingSpinner from './components/LoadingSpinner'
 
+
+import AdminExamSubmissions from './pages/AdminExamSubmissions';
+import AdminExamSubmissionDetails from './pages/AdminExamSubmissionDetails';
+import AdminPopupSettings from './pages/AdminPopupSettings';
+
 const ProtectedRoute = ({ children }) => {
   const { admin, loading } = useAuth()
   if (loading) return <LoadingSpinner fullScreen />
@@ -38,6 +43,10 @@ function App() {
         <Route path="/admin/categories" element={<CategoriesPage />} />
         <Route path="/admin/questions" element={<QuestionsPage />} />
         <Route path="/admin/results" element={<ResultsManagement />} />
+
+        {/* ADD THESE TWO LINES FOR ADMIN EXAM MANAGEMENT */}
+        <Route path="/admin/exam-submissions" element={<AdminExamSubmissions />} />
+        <Route path="/admin/exam-submissions/:id" element={<AdminExamSubmissionDetails />} />
       </Route>
 
       {/* Fallback */}

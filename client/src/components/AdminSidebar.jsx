@@ -8,7 +8,9 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Menu
+  Menu,
+  FileText, // Added for Exam Submissions
+  LayoutTemplate // Added for Popup Settings
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -18,11 +20,14 @@ const AdminSidebar = () => {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
+  // Added the two new admin module routes here
   const navItems = [
     { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/admin/categories', icon: FolderOpen, label: 'Categories' },
     { path: '/admin/questions', icon: HelpCircle, label: 'Questions' },
     { path: '/admin/results', icon: BarChart3, label: 'Results' },
+    { path: '/admin/exam-submissions', icon: FileText, label: 'Exam Submissions' },
+    { path: '/admin/popup-settings', icon: LayoutTemplate, label: 'Popup Settings' },
   ]
 
   const isActive = (path) => location.pathname === path
@@ -74,17 +79,20 @@ const AdminSidebar = () => {
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 py-6 px-3 space-y-1">
+          <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
               const Icon = item.icon
               const active = isActive(item.path)
+              // Handle sub-route active states (like viewing details page: /admin/exam-submissions/123)
+              const isPartiallyActive = location.pathname.startsWith(item.path);
+              
               return (
                 <Link
                   key={item.path}
                   to={item.path}
                   onClick={() => setMobileOpen(false)}
                   className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${
-                    active
+                    active || (isPartiallyActive && item.path !== '/admin/dashboard')
                       ? 'bg-rozgar-blue text-white shadow-md'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
