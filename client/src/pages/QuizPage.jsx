@@ -73,52 +73,82 @@ const QuizPage = () => {
 
   const [correctAnswers, setCorrectAnswers] = useState({})
 
-const fetchQuestions = async () => {
-  try {
-    const res = await getQuizQuestions(categoryId)
-    
-    // 🔥 EXTRACT correct answers before shuffling (backend doesn't send them in response)
-    // We need to get them from a separate endpoint or include them in the API
-    // For now, we'll fetch questions WITH correct answers from a modified endpoint
-    
-    // Option 1: If your API has a parameter to include correct answers
-    // const res = await getQuizQuestions(categoryId, { includeAnswers: true })
-    
-    // Option 2: Store correct answers separately
-    const answersMap = {}
-    res.data.forEach(q => {
-      // Try to find correct answer from any field
-      const correct = q.correctAnswer || q.correctAnswr || q.correct || q.answer || null
-      if (correct) {
-        answersMap[q._id] = correct
-      }
-    })
-    setCorrectAnswers(answersMap)
-    
-    // Shuffle
-    const shuffled = [...res.data].sort(() => Math.random() - 0.5)
-    
-    const fixed = shuffled.map(q => ({
-      ...q,
-      options: Array.isArray(q.options) 
-        ? q.options.map(opt => typeof opt === 'object' ? opt.text || opt.option || String(opt) : String(opt))
-        : [],
-      // Use stored correct answer if available
-      correctAnswer: answersMap[q._id] || q.correctAnswer || q.correctAnswr || q.correct || q.answer || null
-    }))
-    
-    setQuestions(fixed)
-    setTimeLeft((quizSetup.quizTime || 30) * 60)
-  } catch (err) {
-    toast.error('Failed to load questions')
-    navigate('/quiz-setup')
-  } finally {
-    setLoading(false)
+  const fetchQuestions = async () => {
+    try {
+      const res = await getQuizQuestions(categoryId)
+
+      // 🔥 EXTRACT correct answers before shuffling (backend doesn't send them in response)
+      // We need to get them from a separate endpoint or include them in the API
+      // For now, we'll fetch questions WITH correct answers from a modified endpoint
+
+      // Option 1: If your API has a parameter to include correct answers
+      // const res = await getQuizQuestions(categoryId, { includeAnswers: true })
+
+      // Option 2: Store correct answers separately
+      const answersMap = {}
+      res.data.forEach(q => {
+        // Try to find correct answer from any field
+        const correct = q.correctAnswer || q.correctAnswr || q.correct || q.answer || null
+        if (correct) {
+          answersMap[q._id] = correct
+        }
+      })
+      setCorrectAnswers(answersMap)
+
+      // Shuffle
+      const shuffled = [...res.data].sort(() => Math.random() - 0.5)
+
+      const fixed = shuffled.map(q => ({
+        ...q,
+        options: Array.isArray(q.options)
+          ? q.options.map(opt => typeof opt === 'object' ? opt.text || opt.option || String(opt) : String(opt))
+          : [],
+        // Use stored correct answer if available
+        correctAnswer: answersMap[q._id] || q.correctAnswer || q.correctAnswr || q.correct || q.answer || null
+      }))
+
+      setQuestions(fixed)
+      setTimeLeft((quizSetup.quizTime || 30) * 60)
+    } catch (err) {
+      toast.error('Failed to load questions')
+      navigate('/quiz-setup')
+    } finally {
+      setLoading(false)
+    }
   }
-}
+
+  // const handleSubmit = useCallback(() => {
+  //   const score = submitQuiz()
+  //   const resultData = {
+  //     ...quizSetup,
+  //     category: quizSetup.categoryName,
+  //     totalQuestions: score.total,
+  //     correctAnswers: score.correct,
+  //     wrongAnswers: score.wrong,
+  //     unanswered: score.unanswered,
+  //     score: score.percentage,
+  //     answers: answers
+  //   }
+  //   sessionStorage.setItem('quizResult', JSON.stringify(resultData))
+  //   navigate('/result')
+  // }, [submitQuiz, quizSetup, answers, navigate])
 
   const handleSubmit = useCallback(() => {
     const score = submitQuiz()
+
+    const review = questions.map((q) => {
+      const id = getId(q._id)
+
+      return {
+        questionId: id,
+        question: q.question,
+        options: q.options,
+        selectedAnswer: answers[id] || "Not Answered",
+        correctAnswer: q.correctAnswer,
+        isCorrect: answers[id] === q.correctAnswer
+      }
+    })
+
     const resultData = {
       ...quizSetup,
       category: quizSetup.categoryName,
@@ -127,12 +157,14 @@ const fetchQuestions = async () => {
       wrongAnswers: score.wrong,
       unanswered: score.unanswered,
       score: score.percentage,
-      answers: answers
+      review
     }
+
     sessionStorage.setItem('quizResult', JSON.stringify(resultData))
     navigate('/result')
-  }, [submitQuiz, quizSetup, answers, navigate])
+  }, [submitQuiz, quizSetup, answers, questions, navigate])
 
+  // -----------------------------------------
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -241,13 +273,13 @@ const fetchQuestions = async () => {
                     key={idx}
                     onClick={() => selectAnswer(currentQuestion._id, option)}
                     className={`w-full text-left p-5 rounded-xl border-2 transition-all duration-300 flex items-center gap-4 group ${isSelected
-                        ? 'border-rozgar-blue bg-gradient-to-r from-rozgar-blue/5 to-rozgar-blue/10 dark:from-rozgar-blue/10 dark:to-rozgar-blue/20 shadow-glow'
-                        : 'border-gray-200 dark:border-slate-600 hover:border-rozgar-blue/30 dark:hover:border-rozgar-blue/30 hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                      ? 'border-rozgar-blue bg-gradient-to-r from-rozgar-blue/5 to-rozgar-blue/10 dark:from-rozgar-blue/10 dark:to-rozgar-blue/20 shadow-glow'
+                      : 'border-gray-200 dark:border-slate-600 hover:border-rozgar-blue/30 dark:hover:border-rozgar-blue/30 hover:bg-gray-50 dark:hover:bg-slate-700/50'
                       }`}
                   >
                     <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center shrink-0 font-bold text-sm transition-all ${isSelected
-                        ? 'border-rozgar-blue bg-rozgar-blue text-white shadow-lg'
-                        : 'border-gray-300 dark:border-slate-500 text-gray-500 dark:text-gray-400 group-hover:border-rozgar-blue/50'
+                      ? 'border-rozgar-blue bg-rozgar-blue text-white shadow-lg'
+                      : 'border-gray-300 dark:border-slate-500 text-gray-500 dark:text-gray-400 group-hover:border-rozgar-blue/50'
                       }`}>
                       {isSelected ? <CheckCircle2 className="w-5 h-5" /> : letters[idx]}
                     </div>
@@ -275,7 +307,7 @@ const fetchQuestions = async () => {
                   <div
                     key={idx}
                     className={`w-2 h-2 rounded-full transition-all ${idx === currentIndex ? 'w-6 bg-rozgar-blue' :
-                        idx < currentIndex ? 'bg-rozgar-blue/40' : 'bg-gray-200 dark:bg-slate-600'
+                      idx < currentIndex ? 'bg-rozgar-blue/40' : 'bg-gray-200 dark:bg-slate-600'
                       }`}
                   />
                 ))}
@@ -313,10 +345,10 @@ const fetchQuestions = async () => {
                     key={qId}
                     onClick={() => goToQuestion(idx)}
                     className={`w-10 h-10 rounded-xl text-sm font-bold transition-all ${isCurrent
-                        ? 'bg-gradient-to-br from-rozgar-blue to-rozgar-blue-light text-white shadow-glow scale-110'
-                        : isAnswered
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-2 border-green-300 dark:border-green-700'
-                          : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-600'
+                      ? 'bg-gradient-to-br from-rozgar-blue to-rozgar-blue-light text-white shadow-glow scale-110'
+                      : isAnswered
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-2 border-green-300 dark:border-green-700'
+                        : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-600'
                       }`}
                   >
                     {idx + 1}
@@ -368,10 +400,10 @@ const fetchQuestions = async () => {
                 key={qId}
                 onClick={() => goToQuestion(idx)}
                 className={`w-10 h-10 rounded-xl text-sm font-bold shrink-0 transition-all ${isCurrent
-                    ? 'bg-gradient-to-br from-rozgar-blue to-rozgar-blue-light text-white shadow-glow'
-                    : isAnswered
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                      : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400'
+                  ? 'bg-gradient-to-br from-rozgar-blue to-rozgar-blue-light text-white shadow-glow'
+                  : isAnswered
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                    : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400'
                   }`}
               >
                 {idx + 1}

@@ -1,9 +1,23 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Trophy, CheckCircle, XCircle, RotateCcw, Home, Award,
-  Sparkles, TrendingUp, Clock, BookOpen, ArrowRight,
-  Zap, Target, Star
+import {
+  Trophy,
+  CheckCircle,
+  XCircle,
+  RotateCcw,
+  Home,
+  Award,
+  Sparkles,
+  TrendingUp,
+  Clock,
+  BookOpen,
+  ArrowRight,
+  Zap,
+  Target,
+  Star,
+  Check,
+  X,
+  HelpCircle
 } from 'lucide-react'
 import { createResult } from '../services/api'
 import toast from 'react-hot-toast'
@@ -37,26 +51,26 @@ const ResultPage = () => {
   }
 
   const getStatus = () => {
-    if (result.score >= 70) return { 
-      label: 'PASSED', 
-      color: 'text-green-500', 
-      bg: 'bg-green-50 dark:bg-green-900/20', 
+    if (result.score >= 70) return {
+      label: 'PASSED',
+      color: 'text-green-500',
+      bg: 'bg-green-50 dark:bg-green-900/20',
       border: 'border-green-200 dark:border-green-800',
       gradient: 'from-green-400 to-green-600',
       message: 'Excellent work! You have a strong understanding of this subject.'
     }
-    if (result.score >= 50) return { 
-      label: 'AVERAGE', 
-      color: 'text-yellow-500', 
-      bg: 'bg-yellow-50 dark:bg-yellow-900/20', 
+    if (result.score >= 50) return {
+      label: 'AVERAGE',
+      color: 'text-yellow-500',
+      bg: 'bg-yellow-50 dark:bg-yellow-900/20',
       border: 'border-yellow-200 dark:border-yellow-800',
       gradient: 'from-yellow-400 to-orange-500',
       message: 'Good effort! Keep practicing to improve your score.'
     }
-    return { 
-      label: 'NEEDS PRACTICE', 
-      color: 'text-red-500', 
-      bg: 'bg-red-50 dark:bg-red-900/20', 
+    return {
+      label: 'NEEDS PRACTICE',
+      color: 'text-red-500',
+      bg: 'bg-red-50 dark:bg-red-900/20',
       border: 'border-red-200 dark:border-red-800',
       gradient: 'from-red-400 to-red-600',
       message: 'Keep learning! Review the material and try again.'
@@ -71,8 +85,8 @@ const ResultPage = () => {
     <div className="min-h-[calc(100vh-64px-80px)] bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 relative overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 opacity-5">
-        <img 
-          src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1920&q=80" 
+        <img
+          src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=1920&q=80"
           alt="Celebration"
           className="w-full h-full object-cover"
         />
@@ -229,11 +243,11 @@ const ResultPage = () => {
             </p>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {result.score >= 70 
-              ? 'You are performing exceptionally well. Keep up the great work!' 
-              : result.score >= 50 
-              ? 'You are on the right track. Focus on your weak areas and try again.' 
-              : 'Don\'t give up! Review the study materials and retake the quiz to improve.'}
+            {result.score >= 70
+              ? 'You are performing exceptionally well. Keep up the great work!'
+              : result.score >= 50
+                ? 'You are on the right track. Focus on your weak areas and try again.'
+                : 'Don\'t give up! Review the study materials and retake the quiz to improve.'}
           </p>
         </div>
 
@@ -244,7 +258,7 @@ const ResultPage = () => {
             <h3 className="font-bold text-gray-900 dark:text-white">Performance Insight</h3>
           </div>
           <div className="h-4 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500"
               style={{ width: `${result.score}%` }}
             />
@@ -255,6 +269,108 @@ const ResultPage = () => {
             <span>100%</span>
           </div>
         </div>
+
+        {/* ------------------------------------------------ */}
+        {/* Review Answers */}
+        <div className="mt-8 glass-card p-8">
+          <div className="flex items-center gap-3 mb-8">
+            <BookOpen className="w-6 h-6 text-rozgar-blue" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Review Answers
+            </h2>
+          </div>
+
+          <div className="space-y-8">
+
+            {result.review?.map((item, index) => (
+
+              <div
+                key={index}
+                className="border border-gray-200 dark:border-slate-700 rounded-2xl overflow-hidden"
+              >
+
+                {/* Question */}
+                <div className="bg-gray-50 dark:bg-slate-800 px-6 py-5">
+                  <h3 className="font-bold text-lg text-gray-900 dark:text-white">
+                    Q{index + 1}. {item.question}
+                  </h3>
+                </div>
+
+                {/* Options */}
+                <div className="p-6 space-y-3">
+
+                  {item.options.map((option, idx) => {
+
+                    const isSelected = option === item.selectedAnswer
+                    const isCorrect = option === item.correctAnswer
+
+                    return (
+
+                      <div
+                        key={idx}
+                        className={`rounded-xl border-2 p-4 transition-all
+
+                ${isCorrect
+                            ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                            : isSelected
+                              ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                              : 'border-gray-200 dark:border-slate-700'
+                          }
+                `}
+                      >
+
+                        <div className="flex justify-between items-center">
+
+                          <span className="font-medium">
+                            {option}
+                          </span>
+
+                          <div className="flex gap-2">
+
+                            {isCorrect && (
+                              <span className="flex items-center gap-1 text-green-600 font-semibold text-sm">
+                                <Check className="w-4 h-4" />
+                                Correct
+                              </span>
+                            )}
+
+                            {isSelected && !isCorrect && (
+                              <span className="flex items-center gap-1 text-red-600 font-semibold text-sm">
+                                <X className="w-4 h-4" />
+                                Your Answer
+                              </span>
+                            )}
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                    )
+
+                  })}
+
+                  {/* Not Answered */}
+                  {item.selectedAnswer === "Not Answered" && (
+                    <div className="mt-4 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 p-4 flex items-center gap-2">
+                      <HelpCircle className="w-5 h-5 text-yellow-600" />
+                      <span className="text-yellow-700 dark:text-yellow-300 font-medium">
+                        You did not answer this question.
+                      </span>
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+
+            ))}
+
+          </div>
+        </div>
+
+        {/* ------------------------------------------------ */}
       </div>
     </div>
   )
