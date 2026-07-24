@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { examService } from '../services/examApi';
-import api from '../services/api'; // Using your existing api for categories
+import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { Settings, Save, Image as ImageIcon, Type, Link as LinkIcon } from 'lucide-react';
+import { Settings, Save, Image as ImageIcon, Type, Link as LinkIcon, UploadCloud, X } from 'lucide-react';
 
 const AdminPopupSettings = () => {
   const [categories, setCategories] = useState([]);
@@ -10,6 +10,9 @@ const AdminPopupSettings = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   
+  // New state to toggle between URL and Upload
+  const [imageSource, setImageSource] = useState('url'); 
+
   const [formData, setFormData] = useState({
     enabled: false,
     type: 'image-content',
@@ -23,11 +26,9 @@ const AdminPopupSettings = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch existing categories for the dropdown
         const catRes = await api.get('/categories');
         setCategories(catRes.data);
 
-        // Fetch current popup config
         const popupRes = await examService.getPopup();
         if (popupRes && popupRes._id) {
           setFormData({
@@ -39,6 +40,11 @@ const AdminPopupSettings = () => {
             ctaText: popupRes.ctaText || 'Apply Now',
             categoryId: popupRes.categoryId || (catRes.data.length > 0 ? catRes.data[0]._id : '')
           });
+          
+          // Auto-switch to upload tab if the saved string is a Base64 data URL
+          if (popupRes.image && popupRes.image.startsWith('data:image')) {
+            setImageSource('upload');
+          }
         } else if (catRes.data.length > 0) {
           setFormData(prev => ({ ...prev, categoryId: catRes.data[0]._id }));
         }
@@ -60,6 +66,26 @@ const AdminPopupSettings = () => {
     });
   };
 
+  // Convert uploaded file to Base64 String
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+         setMessage({ type: 'error', text: 'Image size must be less than 5MB' });
+         return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, image: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setFormData({ ...formData, image: '' });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -67,8 +93,6 @@ const AdminPopupSettings = () => {
     try {
       await examService.updatePopup(formData);
       setMessage({ type: 'success', text: 'Popup configuration updated successfully!' });
-      
-      // Clear message after 3 seconds
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to update configuration.' });
@@ -146,24 +170,78 @@ const AdminPopupSettings = () => {
             </div>
           </div>
 
+          {/* DUAL IMAGE INPUT SECTION */}
           {(formData.type === 'image' || formData.type === 'image-content') && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
-                <ImageIcon className="w-4 h-4" /> Image URL
-              </label>
-              <input
-                type="text"
-                name="image"
-                value={formData.image}
-                onChange={handleChange}
-                placeholder="https://example.com/banner.jpg"
-                className="w-full p-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-rozgar-blue focus:border-rozgar-blue"
-              />
+            <div className="bg-gray-50 dark:bg-slate-700/30 p-4 rounded-xl border border-gray-200 dark:border-slate-600">
+              <div className="flex items-center justify-between mb-4">
+                <label className="block text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-rozgar-blue" /> Image Source
+                </label>
+                
+                {/* Custom Toggle Pills */}
+                <div className="flex bg-gray-200 dark:bg-slate-800 p-1 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setImageSource('url')}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${imageSource === 'url' ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                  >
+                    Image URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageSource('upload')}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${imageSource === 'upload' ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                  >
+                    Upload File
+                  </button>
+                </div>
+              </div>
+
+              {/* URL Input */}
+              {imageSource === 'url' && (
+                <input
+                  type="text"
+                  name="image"
+                  // Don't show long base64 strings in the URL input box
+                  value={formData.image.startsWith('data:image') ? '' : formData.image}
+                  onChange={handleChange}
+                  placeholder="https://example.com/banner.jpg"
+                  className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-rozgar-blue focus:border-rozgar-blue mb-4"
+                />
+              )}
+
+              {/* File Upload Drag & Drop */}
+              {imageSource === 'upload' && (
+                <div className="flex items-center justify-center w-full mb-4">
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-white dark:bg-slate-700 hover:bg-gray-50 dark:border-slate-500 dark:hover:bg-slate-600 transition-colors">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
+                      <UploadCloud className="w-8 h-8 mb-2 text-gray-400" />
+                      <p className="mb-1 text-sm text-gray-600 dark:text-gray-300"><span className="font-semibold text-rozgar-blue">Click to upload</span> or drag and drop</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG or WEBP (Max. 5MB)</p>
+                    </div>
+                    <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
+                  </label>
+                </div>
+              )}
+
+              {/* Image Preview Area */}
+              {formData.image && (
+                <div className="relative w-full sm:w-2/3 md:w-1/2 h-40 bg-gray-200 dark:bg-slate-800 rounded-lg overflow-hidden border border-gray-300 dark:border-slate-600 mt-2">
+                  <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute top-2 right-2 p-1.5 bg-white text-red-500 rounded-full shadow-md hover:bg-red-50 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           {(formData.type === 'content' || formData.type === 'image-content') && (
-            <>
+            <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Headline</label>
                 <input
@@ -187,7 +265,7 @@ const AdminPopupSettings = () => {
                   className="w-full p-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-rozgar-blue focus:border-rozgar-blue"
                 />
               </div>
-            </>
+            </div>
           )}
 
           <div>

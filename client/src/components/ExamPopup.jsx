@@ -11,13 +11,10 @@ const ExamPopup = () => {
     const fetchPopup = async () => {
       try {
         const data = await examService.getPopup();
+        // If it's enabled in the admin panel, always show it
         if (data && data.enabled) {
           setPopupData(data);
-          // Optional: Add logic to check sessionStorage so it doesn't annoy users on every refresh
-          const hasSeenPopup = sessionStorage.getItem('hasSeenExamPopup');
-          if (!hasSeenPopup) {
-            setIsVisible(true);
-          }
+          setIsVisible(true); 
         }
       } catch (error) {
         console.error("Failed to load popup configuration:", error);
@@ -29,7 +26,7 @@ const ExamPopup = () => {
 
   const handleClose = () => {
     setIsVisible(false);
-    sessionStorage.setItem('hasSeenExamPopup', 'true');
+    // Removed sessionStorage so it will appear again on refresh
   };
 
   const handleCtaClick = () => {
@@ -78,7 +75,7 @@ const ExamPopup = () => {
               )}
               
               {popupData.description && (
-                <p className="text-gray-600 mb-6">
+                <p className="text-gray-600 mb-6 whitespace-pre-wrap">
                   {popupData.description}
                 </p>
               )}
