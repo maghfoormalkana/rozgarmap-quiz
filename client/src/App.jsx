@@ -44,9 +44,12 @@ function App() {
         <Route path="/admin/questions" element={<QuestionsPage />} />
         <Route path="/admin/results" element={<ResultsManagement />} />
 
-        {/* ADD THESE TWO LINES FOR ADMIN EXAM MANAGEMENT */}
+        {/* EXAM MANAGEMENT */}
         <Route path="/admin/exam-submissions" element={<AdminExamSubmissions />} />
         <Route path="/admin/exam-submissions/:id" element={<AdminExamSubmissionDetails />} />
+        
+        {/* ADD THIS MISSING LINE HERE */}
+        <Route path="/admin/popup-settings" element={<AdminPopupSettings />} />
       </Route>
 
       {/* Fallback */}

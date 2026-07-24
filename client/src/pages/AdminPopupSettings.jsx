@@ -24,7 +24,7 @@ const AdminPopupSettings = () => {
     const fetchData = async () => {
       try {
         // Fetch existing categories for the dropdown
-        const catRes = await api.get('/api/categories');
+        const catRes = await api.get('/categories');
         setCategories(catRes.data);
 
         // Fetch current popup config
