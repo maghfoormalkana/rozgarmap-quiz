@@ -137,8 +137,22 @@ exports.getSubmissionById = async (req, res, next) => {
 // @access  Private/Admin
 exports.deleteSubmission = async (req, res, next) => {
   try {
-    await ExamSubmission.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Submission deleted" });
+    const submissionId = req.params.id;
+
+    // 1. Check if the frontend accidentally sent an object instead of a string
+    if (!submissionId || submissionId.includes('[object')) {
+      return res.status(400).json({ message: "Invalid ID format received" });
+    }
+
+    // 2. Attempt the deletion and store the result
+    const deletedSubmission = await ExamSubmission.findByIdAndDelete(submissionId);
+    
+    // 3. Verify it was actually found in the database
+    if (!deletedSubmission) {
+      return res.status(404).json({ message: "Submission not found in database" });
+    }
+    
+    res.status(200).json({ message: "Submission successfully deleted" });
   } catch (error) {
     next(error);
   }

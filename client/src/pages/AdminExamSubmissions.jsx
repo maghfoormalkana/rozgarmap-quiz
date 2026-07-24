@@ -24,14 +24,29 @@ const AdminExamSubmissions = () => {
     }
   };
 
+  // const handleDelete = async (id) => {
+  //   if (window.confirm('Are you sure you want to delete this exam record? This action cannot be undone.')) {
+  //     try {
+  //       // Assuming you add a delete method to examApi.js: deleteSubmission: (id) => api.delete(`/api/exam/submissions/${id}`)
+  //       // await examService.deleteSubmission(id);
+  //       setSubmissions(submissions.filter(sub => sub._id !== id));
+  //     } catch (error) {
+  //       alert('Failed to delete submission');
+  //     }
+  //   }
+  // };
+
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this exam record? This action cannot be undone.')) {
       try {
-        // Assuming you add a delete method to examApi.js: deleteSubmission: (id) => api.delete(`/api/exam/submissions/${id}`)
-        // await examService.deleteSubmission(id);
+        // 1. Actually call the backend to delete it from MongoDB
+        await examService.deleteSubmission(id);
+        
+        // 2. Only remove it from the screen if the backend succeeds
         setSubmissions(submissions.filter(sub => sub._id !== id));
       } catch (error) {
-        alert('Failed to delete submission');
+        console.error(error);
+        alert('Failed to delete submission from the database. Check console.');
       }
     }
   };
