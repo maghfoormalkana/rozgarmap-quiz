@@ -13,10 +13,17 @@ import QuestionsPage from './pages/QuestionsPage'
 import ResultsManagement from './pages/ResultsManagement'
 import LoadingSpinner from './components/LoadingSpinner'
 
-
+// ADMIN EXAM IMPORTS
 import AdminExamSubmissions from './pages/AdminExamSubmissions';
 import AdminExamSubmissionDetails from './pages/AdminExamSubmissionDetails';
 import AdminPopupSettings from './pages/AdminPopupSettings';
+
+// STUDENT EXAM IMPORTS
+import ExamLandingPage from './pages/ExamLandingPage';
+import ExamRegistrationPage from './pages/ExamRegistrationPage';
+import ExamInstructionsPage from './pages/ExamInstructionsPage';
+import ExamPage from './pages/ExamPage';
+import ExamSuccessPage from './pages/ExamSuccessPage';
 
 const ProtectedRoute = ({ children }) => {
   const { admin, loading } = useAuth()
@@ -34,6 +41,13 @@ function App() {
         <Route path="/quiz-setup" element={<QuizSetup />} />
         <Route path="/quiz/:categoryId" element={<QuizPage />} />
         <Route path="/result" element={<ResultPage />} />
+        
+        {/* STUDENT EXAM ROUTES */}
+        <Route path="/exam/landing/:categoryId" element={<ExamLandingPage />} />
+        <Route path="/exam/register" element={<ExamRegistrationPage />} />
+        <Route path="/exam/instructions" element={<ExamInstructionsPage />} />
+        <Route path="/exam/start" element={<ExamPage />} />
+        <Route path="/exam/success" element={<ExamSuccessPage />} />
       </Route>
 
       {/* Admin Routes */}
@@ -47,8 +61,6 @@ function App() {
         {/* EXAM MANAGEMENT */}
         <Route path="/admin/exam-submissions" element={<AdminExamSubmissions />} />
         <Route path="/admin/exam-submissions/:id" element={<AdminExamSubmissionDetails />} />
-        
-        {/* ADD THIS MISSING LINE HERE */}
         <Route path="/admin/popup-settings" element={<AdminPopupSettings />} />
       </Route>
 

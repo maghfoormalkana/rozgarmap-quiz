@@ -1,23 +1,28 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useExam } from '../hooks/useExam';
-import ExamTimer from '../components/ExamTimer';
-import ExamNavigator from '../components/ExamNavigator';
+import ExamTimer from '../pages/ExamTimer';
+import ExamNavigator from '../pages/ExamNavigator';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const ExamPage = () => {
-  const { categoryId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { getStudentDetails, fetchQuestions, submitFinalExam, loading, error } = useExam();
 
+  // Bulletproof ID extraction: Check route state first, then session storage
+  const studentData = getStudentDetails();
+  const categoryId = location.state?.categoryId || studentData?.categoryId;
+
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState({}); // e.g., { 0: "Option A", 1: "Option C" }
+  const [answers, setAnswers] = useState({}); 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!getStudentDetails()) {
-      navigate(`/exam/register/${categoryId}`);
+    // Security Check: If no session exists, kick back to registration
+    if (!studentData) {
+      navigate('/exam/register');
       return;
     }
 
@@ -26,11 +31,17 @@ const ExamPage = () => {
         const qData = await fetchQuestions(categoryId);
         setQuestions(qData);
       } catch (err) {
-        // Handled by hook
+        console.error("Failed to load questions:", err);
       }
     };
-    loadExam();
-  }, [categoryId]);
+    
+    // BULLETPROOF CHECK: Only fetch if we have an ID AND haven't loaded questions yet
+    if (categoryId && questions.length === 0) {
+       loadExam();
+    }
+    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryId, navigate]); // REMOVED unstable dependencies to stop the loop!
 
   const handleOptionSelect = (option) => {
     setAnswers((prev) => ({
@@ -71,7 +82,10 @@ const ExamPage = () => {
           <h1 className="font-bold text-lg text-gray-900 dark:text-white hidden sm:block">
             Official Examination
           </h1>
+          
+          {/* Timer Component */}
           <ExamTimer initialMinutes={60} onTimeUp={handleForceSubmit} />
+          
           <button 
             onClick={() => {
               if (window.confirm('Are you sure you want to finish and submit your exam?')) {
@@ -148,14 +162,14 @@ const ExamPage = () => {
                       }
                     }}
                     disabled={isSubmitting}
-                    className="px-6 py-2.5 rounded-lg font-bold text-white bg-green-500 hover:bg-green-600 transition-colors"
+                    className="px-6 py-2.5 rounded-lg font-bold text-white bg-green-500 hover:bg-green-600 transition-colors shadow-md"
                   >
                     Submit Exam
                   </button>
                 ) : (
                   <button
                     onClick={() => setCurrentIndex(prev => prev + 1)}
-                    className="px-6 py-2.5 rounded-lg font-semibold text-white bg-rozgar-blue hover:bg-blue-700 transition-colors"
+                    className="px-6 py-2.5 rounded-lg font-semibold text-white bg-rozgar-blue hover:bg-blue-700 transition-colors shadow-md"
                   >
                     Next Question
                   </button>

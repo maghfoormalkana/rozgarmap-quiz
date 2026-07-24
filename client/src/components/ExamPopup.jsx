@@ -32,7 +32,12 @@ const ExamPopup = () => {
   const handleCtaClick = () => {
     handleClose();
     if (popupData.categoryId) {
-      navigate(`/exam/landing/${popupData.categoryId}`);
+      // Extract the string ID if it comes back as a populated object
+      const catId = typeof popupData.categoryId === 'object' 
+        ? popupData.categoryId._id 
+        : popupData.categoryId;
+        
+      navigate(`/exam/landing/${catId}`);
     }
   };
 

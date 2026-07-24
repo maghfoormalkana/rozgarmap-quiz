@@ -1,19 +1,27 @@
 import React, { useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useExam } from '../hooks/useExam';
 import { AlertCircle, CheckCircle2, Clock, ShieldAlert } from 'lucide-react';
 
 const ExamInstructionsPage = () => {
-  const { categoryId } = useParams();
+  // 1. Catch the hidden state from the Registration Page
+  const location = useLocation();
   const navigate = useNavigate();
   const { getStudentDetails } = useExam();
+  
+  const categoryId = location.state?.categoryId;
 
   useEffect(() => {
     // Prevent direct access without registration
     if (!getStudentDetails()) {
-      navigate(`/exam/register/${categoryId}`);
+      navigate('/'); // Sending back to home is safest if they lost their session
     }
-  }, [categoryId, navigate, getStudentDetails]);
+  }, [navigate, getStudentDetails]);
+
+  const handleStart = () => {
+    // 2. Pass the categoryId forward one last time to the actual Exam Page!
+    navigate('/exam/start', { state: { categoryId } });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 py-12 px-4 sm:px-6 lg:px-8">
@@ -69,7 +77,7 @@ const ExamInstructionsPage = () => {
             </div>
 
             <button
-              onClick={() => navigate(`/exam/start/${categoryId}`)}
+              onClick={handleStart}
               className="w-full bg-rozgar-blue hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
             >
               I Understand, Start Exam Now

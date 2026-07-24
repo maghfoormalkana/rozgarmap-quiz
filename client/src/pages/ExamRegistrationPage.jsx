@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useExam } from '../hooks/useExam';
 import { User, Mail, Phone, GraduationCap, Building2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const ExamRegistrationPage = () => {
-  const { categoryId } = useParams();
+  // 1. Grab the ID from the background route state instead of the URL
+  const location = useLocation();
   const navigate = useNavigate();
+  const categoryId = location.state?.categoryId; 
+  
   const { registerForExam, loading, error } = useExam();
 
   const [formData, setFormData] = useState({
-    categoryId,
+    categoryId: categoryId || '', // Now this will successfully populate!
     fullName: '',
     qualification: '',
     contactNo: '',
@@ -26,9 +29,10 @@ const ExamRegistrationPage = () => {
     e.preventDefault();
     try {
       await registerForExam(formData);
-      navigate(`/exam/instructions/${categoryId}`);
+      // Pass it forward to instructions in the background
+      navigate('/exam/instructions', { state: { categoryId } });
     } catch (err) {
-      // Error is handled by the hook and displayed below
+      // Error is handled by the hook
     }
   };
 

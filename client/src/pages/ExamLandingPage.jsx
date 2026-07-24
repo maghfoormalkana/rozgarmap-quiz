@@ -6,6 +6,11 @@ const ExamLandingPage = () => {
   const { categoryId } = useParams();
   const navigate = useNavigate();
 
+  const handleProceed = () => {
+    // Navigate to the exact route, passing the ID in the state object
+    navigate('/exam/register', { state: { categoryId } });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
@@ -43,7 +48,7 @@ const ExamLandingPage = () => {
             </div>
 
             <button
-              onClick={() => navigate(`/exam/register/${categoryId}`)}
+              onClick={handleProceed}
               className="w-full flex items-center justify-center gap-2 bg-rozgar-blue hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl transition-colors shadow-lg"
             >
               Proceed to Registration
