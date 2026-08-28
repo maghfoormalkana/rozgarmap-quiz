@@ -168,7 +168,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { examService } from '../services/examApi';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { ArrowLeft, User, CheckCircle, XCircle, Award, BookOpen, GraduationCap, Building2, Phone, Mail, IdCard } from 'lucide-react';
+import { ArrowLeft, User, CheckCircle, XCircle, Award, BookOpen, GraduationCap, Building2, Phone, Mail, Contact } from 'lucide-react';
 
 const AdminExamSubmissionDetails = () => {
   const { id } = useParams();
@@ -221,7 +221,7 @@ const AdminExamSubmissionDetails = () => {
               <p className="font-medium text-gray-900 dark:text-white">{submission.fullName}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 flex items-center gap-1"><IdCard className="w-3.5 h-3.5"/> Roll Number</p>
+              <p className="text-sm text-gray-500 flex items-center gap-1"><Contact className="w-3.5 h-3.5"/> Roll Number</p>
               <p className="font-medium text-gray-900 dark:text-white">{submission.rollNo || 'N/A'}</p>
             </div>
             <div>
