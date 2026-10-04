@@ -12,7 +12,17 @@ const createCategory = async (req, res) => {
 
 const updateCategory = async (req, res) => {
   try {
-    const category = await Category.findByIdAndUpdate(req.params.id, { name: req.body.name }, { new: true, runValidators: true })
+    // Dynamically check what frontend is trying to update (name or status)
+    const updateFields = {};
+    if (req.body.name !== undefined) updateFields.name = req.body.name;
+    if (req.body.isActive !== undefined) updateFields.isActive = req.body.isActive;
+
+    const category = await Category.findByIdAndUpdate(
+      req.params.id, 
+      updateFields, 
+      { new: true, runValidators: true }
+    )
+    
     if (!category) return res.status(404).json({ message: 'Category not found' })
     res.json(category)
   } catch (error) { res.status(400).json({ message: error.message }) }

@@ -10,6 +10,12 @@ const categorySchema = new mongoose.Schema(
       maxlength: [100, "Name cannot exceed 100 characters"],
     },
 
+    // NEW: Added active toggle status
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+
     examMode: {
       type: Boolean,
       default: false,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FolderOpen, Plus, Pencil, Trash2, Search, X } from 'lucide-react'
+import { FolderOpen, Plus, Pencil, Trash2, Search, X, Eye, EyeOff } from 'lucide-react'
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../services/api'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Modal from '../components/Modal'
@@ -75,6 +75,19 @@ const CategoriesPage = () => {
     }
   }
 
+  // NEW: Toggle function
+  const handleToggleStatus = async (category) => {
+    try {
+      // If it doesn't have an isActive field yet (old data), assume it's true, so we toggle to false
+      const currentStatus = category.isActive !== false; 
+      await updateCategory(category._id, { isActive: !currentStatus });
+      toast.success(`Category is now ${!currentStatus ? 'Active' : 'Hidden'}`);
+      fetchCategories();
+    } catch (err) {
+      toast.error('Failed to change status');
+    }
+  }
+
   const openEdit = (category) => {
     setEditingCategory(category)
     setFormData({ name: category.name })
@@ -139,29 +152,52 @@ const CategoriesPage = () => {
           {filteredCategories.map((category) => (
             <div
               key={category._id}
-              className="card p-5 flex items-center justify-between group"
+              className={`card p-5 flex items-center justify-between group border-l-4 transition-all ${
+                category.isActive !== false ? 'border-l-green-500' : 'border-l-gray-300 dark:border-l-slate-600 opacity-60 hover:opacity-100'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-rozgar-blue/10 dark:bg-rozgar-blue/20 flex items-center justify-center">
-                  <FolderOpen className="w-5 h-5 text-rozgar-blue" />
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  category.isActive !== false ? 'bg-rozgar-blue/10 dark:bg-rozgar-blue/20 text-rozgar-blue' : 'bg-gray-100 dark:bg-slate-700 text-gray-400'
+                }`}>
+                  <FolderOpen className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">{category.name}</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <h3 className={`font-semibold ${category.isActive !== false ? 'text-gray-900 dark:text-white' : 'text-gray-500 line-through decoration-1'}`}>
+                      {category.name}
+                    </h3>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      category.isActive !== false ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-slate-700'
+                    }`}>
+                      {category.isActive !== false ? 'Active' : 'Hidden'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                     {new Date(category.createdAt).toLocaleDateString()}
                   </p>
                 </div>
               </div>
+              
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => handleToggleStatus(category)}
+                  className="p-2 rounded-lg text-gray-500 hover:text-rozgar-blue hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                  title={category.isActive !== false ? "Hide Category" : "Show Category"}
+                >
+                  {category.isActive !== false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
                 <button
                   onClick={() => openEdit(category)}
                   className="p-2 rounded-lg text-gray-500 hover:text-rozgar-blue hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                  title="Edit Category Name"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setDeleteTarget(category)}
                   className="p-2 rounded-lg text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  title="Delete Category"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
