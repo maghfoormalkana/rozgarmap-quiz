@@ -27,7 +27,9 @@ const QuizSetup = () => {
   const fetchCategories = async () => {
     try {
       const res = await getCategories()
-      setCategories(res.data)
+      // FILTER: Only keep categories that are active (visible)
+      const activeCategories = res.data.filter(cat => cat.isActive !== false)
+      setCategories(activeCategories)
     } catch (err) {
       toast.error('Failed to load categories')
     } finally {
@@ -221,7 +223,7 @@ const QuizSetup = () => {
             {categories.length === 0 ? (
               <div className="text-center py-16 glass-card">
                 <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400 text-lg">No categories available yet</p>
+                <p className="text-gray-500 dark:text-gray-400 text-lg">No active categories available yet</p>
                 <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">Please check back later</p>
               </div>
             ) : (
